@@ -47,7 +47,7 @@ impl UartPort {
     pub fn send(&mut self, data: u8) {
         let dbr = self.dbr.load(Ordering::Relaxed);
         unsafe {
-            let empty_flag = (self.lsr.load(Ordering::Relaxed).read() & 0x20) >> 5;
+            let empty_flag = self.lsr.load(Ordering::Relaxed).read() & 0x20;
             match data {
                 8 | 0x7F => {
                     while empty_flag == 0 { core::hint::spin_loop(); }
@@ -84,4 +84,11 @@ impl Write for UartPort {
         }
         Ok(())
     }
+}
+
+pub unsafe fn shutdown() -> ! {
+    let virt_test = AtomicPtr::new(0x100000 as *mut u32);
+    let virt_addr = virt_test.load(Ordering::Relaxed);
+    unsafe { virt_addr.write(0x5555); }
+    unreachable!()
 }
