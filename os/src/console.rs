@@ -1,10 +1,8 @@
 use core::fmt::{self, Write};
-use crate::sbi::UartPort;
+use crate::sbi::UART;
 
 pub fn print(args: fmt::Arguments) {
-    let mut uart_port = unsafe { UartPort::new(0x10000000) };
-    uart_port.start(); 
-    uart_port.write_fmt(args).unwrap();
+    UART.get().write_fmt(args).unwrap();
 }
 
 /// print string macro

@@ -1,23 +1,18 @@
-//! The main module and entrypoint
-//!
-//! The operating system and app also starts in this module. Kernel code starts
-//! executing from `entry.asm`, after which [`rust_main()`] is called to
-//! initialize various pieces of functionality [`clear_bss()`]. (See its source code for
-//! details.)
-//!
-//! We then call [`println!`] to display `Hello, world!`.
-
-#![deny(missing_docs)]
-#![deny(warnings)]
 #![no_std]
 #![no_main]
 #![feature(panic_info_message)]
 
 use core::arch::global_asm;
+use core::arch::asm;
+use crate::sbi::UART;
+// use crate::config::TIME_PERIOD;
+use riscv::register::*;
 
 #[macro_use]
 mod exception;
 mod console;
+mod config;
+mod sync;
 mod sbi;
 
 global_asm!(include_str!("entry.asm"));
@@ -33,10 +28,41 @@ pub fn clear_bss() {
     });
 }
 
+pub fn init_time() {
+    // let mtime = 0x0200bff8 as *const usize;
+    // let time = mtime.read_volatile();
+    // let mtimecmp = 0x02004000 as *mut usize;
+    // *mtimecmp = time;
+    // ToDo
+}
+
+pub unsafe fn rust_start() {
+    mstatus::set_mpp(mstatus::MPP::Supervisor);
+    mepc::write(rust_main as usize);
+    satp::write(0);
+    unsafe {
+        asm!(
+            "csrw mideleg, {medeleg}", 
+            "csrw medeleg, {mideleg}",
+            medeleg = in(reg) !0,
+            mideleg = in(reg) !0,
+        );
+    }
+    sie::set_sext();
+    sie::set_stimer();
+    sie::set_ssoft();
+    pmpaddr0::write(0x3fffffffffffff);
+    pmpcfg0::write(0xf);
+    // init_time();
+    unsafe { asm!("mret"); }
+}
+
 /// the rust entry-point of os
 #[no_mangle]
-pub fn rust_main() -> ! {
+pub unsafe fn rust_main() -> ! {
+    UART.get().start(); 
     clear_bss();
+    rust_start();
     println!("Hello, world!!!");
     panic!("It should shutdown!");
 }

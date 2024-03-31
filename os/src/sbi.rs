@@ -2,6 +2,9 @@
 
 use core::sync::atomic::{AtomicPtr, Ordering};
 use core::fmt::{self, Write};
+use crate::config::VIRT_UART;
+use lazy_static::lazy_static;
+use crate::sync::UPSafeCell;
 
 #[derive(Debug)]
 pub struct UartPort {
@@ -11,6 +14,11 @@ pub struct UartPort {
     lcr: AtomicPtr<u8>, // Line Control Register
     mcr: AtomicPtr<u8>, // Modem Control Register
     lsr: AtomicPtr<u8>, // Line Status Register
+}
+lazy_static! {
+    pub static ref UART: UPSafeCell<UartPort> = unsafe { UPSafeCell::new({
+        UartPort::new(VIRT_UART)
+    }) };
 }
 
 impl UartPort {
