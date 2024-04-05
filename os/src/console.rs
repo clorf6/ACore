@@ -1,5 +1,5 @@
 use core::fmt::{self, Write};
-use crate::sbi::UART;
+use crate::drivers::sbi::UART;
 
 pub fn print(args: fmt::Arguments) {
     UART.get().write_fmt(args).unwrap();

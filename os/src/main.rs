@@ -1,23 +1,25 @@
 #![no_std]
 #![no_main]
 #![feature(panic_info_message)]
+#![feature(alloc_error_handler)]
 
 use core::arch::global_asm;
 use core::arch::asm;
-use crate::sbi::UART;
+use crate::drivers::sbi::UART;
 // use crate::config::TIME_PERIOD;
 use riscv::register::*;
+extern crate alloc;
 
 #[macro_use]
+mod drivers;
 mod exception;
 mod console;
 mod config;
 mod sync;
-mod sbi;
+mod mm;
 
 global_asm!(include_str!("entry.asm"));
 
-/// clear BSS segment
 pub fn clear_bss() {
     extern "C" {
         fn sbss();
@@ -36,6 +38,7 @@ pub fn init_time() {
     // ToDo
 }
 
+#[no_mangle]
 pub unsafe fn rust_start() {
     mstatus::set_mpp(mstatus::MPP::Supervisor);
     mepc::write(rust_main as usize);
@@ -54,15 +57,17 @@ pub unsafe fn rust_start() {
     pmpaddr0::write(0x3fffffffffffff);
     pmpcfg0::write(0xf);
     // init_time();
-    unsafe { asm!("mret"); }
+    unsafe { asm!(
+        "mret",
+        options(noreturn)
+    ); }
 }
 
-/// the rust entry-point of os
 #[no_mangle]
 pub unsafe fn rust_main() -> ! {
     UART.get().start(); 
     clear_bss();
-    rust_start();
+    mm::init();
     println!("Hello, world!!!");
     panic!("It should shutdown!");
 }
