@@ -2,11 +2,11 @@ use super::linked_list::LinkedList;
 use alloc::alloc::Layout;
 use core::alloc::GlobalAlloc;
 use core::ptr::null_mut;
-use crate::config::BUDDY_ALLOCATOR_LEVEL;
 use core::cmp::{min, max};
 use core::mem::size_of;
 use spin::Mutex;
 
+const BUDDY_ALLOCATOR_LEVEL: usize = 32;
 pub struct BuddyAllocator {
     pub allocator: Mutex<BuddyAllocatorInner>,
 }

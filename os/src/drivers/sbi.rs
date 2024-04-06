@@ -15,10 +15,15 @@ pub struct UartPort {
     mcr: AtomicPtr<u8>, // Modem Control Register
     lsr: AtomicPtr<u8>, // Line Status Register
 }
+
 lazy_static! {
     pub static ref UART: UPSafeCell<UartPort> = unsafe { UPSafeCell::new({
         UartPort::new(VIRT_UART)
     }) };
+}
+
+pub fn init_uart() {
+    UART.get().start();
 }
 
 impl UartPort {

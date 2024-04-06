@@ -3,20 +3,22 @@
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
 
-use core::arch::global_asm;
-use core::arch::asm;
+use crate::drivers::sbi::init_uart;
 use crate::drivers::sbi::UART;
+use core::arch::asm;
+use core::arch::global_asm;
 // use crate::config::TIME_PERIOD;
 use riscv::register::*;
 extern crate alloc;
+extern crate bitflags;
 
 #[macro_use]
 mod drivers;
-mod exception;
-mod console;
 mod config;
-mod sync;
+mod console;
+mod exception;
 mod mm;
+mod sync;
 
 global_asm!(include_str!("entry.asm"));
 
@@ -25,9 +27,7 @@ pub fn clear_bss() {
         fn sbss();
         fn ebss();
     }
-    (sbss as usize..ebss as usize).for_each(|a| {
-        unsafe { (a as *mut u8).write_volatile(0) }
-    });
+    (sbss as usize..ebss as usize).for_each(|a| unsafe { (a as *mut u8).write_volatile(0) });
 }
 
 pub fn init_time() {
@@ -45,7 +45,7 @@ pub unsafe fn rust_start() {
     satp::write(0);
     unsafe {
         asm!(
-            "csrw mideleg, {medeleg}", 
+            "csrw mideleg, {medeleg}",
             "csrw medeleg, {mideleg}",
             medeleg = in(reg) !0,
             mideleg = in(reg) !0,
@@ -57,15 +57,14 @@ pub unsafe fn rust_start() {
     pmpaddr0::write(0x3fffffffffffff);
     pmpcfg0::write(0xf);
     // init_time();
-    unsafe { asm!(
-        "mret",
-        options(noreturn)
-    ); }
+    unsafe {
+        asm!("mret", options(noreturn));
+    }
 }
 
 #[no_mangle]
 pub unsafe fn rust_main() -> ! {
-    UART.get().start(); 
+    init_uart();
     clear_bss();
     mm::init();
     println!("Hello, world!!!");
