@@ -7,6 +7,7 @@ use crate::println;
 use crate::sync::UPSafeCell;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use alloc::collections::BTreeMap;
 use bitflags::*;
 use core::arch::asm;
 use lazy_static::*;
@@ -14,7 +15,7 @@ use riscv::register::satp;
 
 pub struct MapArea {
     vpn_range: Range<VirtPageNum>,
-    data_frames: Vec<FrameTracker>,
+    data_frames: BTreeMap<VirtPageNum, FrameTracker>,
     map_type: MapType,
     map_perm: MapPermission,
 }
@@ -45,7 +46,7 @@ impl MapArea {
         let end_vpn: VirtPageNum = end_va.ceil();
         Self {
             vpn_range: Range::new(start_vpn, end_vpn),
-            data_frames: Vec::new(),
+            data_frames: BTreeMap::new(),
             map_type,
             map_perm,
         }
@@ -59,7 +60,7 @@ impl MapArea {
             MapType::Framed => {
                 let frame = frame_alloc().unwrap();
                 ppn = frame.ppn;
-                self.data_frames.push(frame);
+                self.data_frames.insert(vpn, frame);
             }
         }
         let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
@@ -67,6 +68,9 @@ impl MapArea {
     }
     #[allow(unused)]
     pub fn unmap_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
+        if (self.map_type == MapType::Framed) {
+            self.data_frames.remove(&vpn);
+        }
         page_table.unmap(vpn);
     }
     pub fn map(&mut self, page_table: &mut PageTable) {

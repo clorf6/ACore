@@ -1,9 +1,9 @@
 use super::address::{PhysAddr, PhysPageNum};
 use crate::config::MEMORY_END;
+use crate::println;
 use crate::sync::UPSafeCell;
 use alloc::vec::Vec;
 use lazy_static::*;
-use crate::println;
 
 type FrameAllocatorImpl = StackFrameAllocator;
 
@@ -76,6 +76,8 @@ fn frame_dealloc(ppn: PhysPageNum) {
 }
 pub struct FrameTracker {
     pub ppn: PhysPageNum,
+    pub fa: PhysPageNum,
+    pub used: usize,
 }
 
 impl FrameTracker {
@@ -84,7 +86,7 @@ impl FrameTracker {
         for i in bytes_array {
             *i = 0;
         }
-        Self { ppn }
+        Self { ppn, fa: PhysPageNum(0), used: 0 }
     }
 }
 
