@@ -3,6 +3,7 @@ use crate::config::MEMORY_END;
 use crate::sync::UPSafeCell;
 use alloc::vec::Vec;
 use lazy_static::*;
+use crate::println;
 
 type FrameAllocatorImpl = StackFrameAllocator;
 
@@ -34,6 +35,7 @@ pub struct StackFrameAllocator {
 
 impl StackFrameAllocator {
     pub fn init(&mut self, l: PhysPageNum, r: PhysPageNum) {
+        println!("Frame range: {} {}", l.0, r.0);
         self.current = l.0;
         self.end = r.0;
     }

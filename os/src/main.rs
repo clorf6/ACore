@@ -4,7 +4,6 @@
 #![feature(alloc_error_handler)]
 
 use crate::drivers::sbi::init_uart;
-use crate::drivers::sbi::UART;
 use core::arch::asm;
 use core::arch::global_asm;
 // use crate::config::TIME_PERIOD;

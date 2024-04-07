@@ -1,9 +1,9 @@
 use super::buddy_allocator::BuddyAllocator;
 use crate::println;
-use crate::config::KERNEL_HEAP_SIZE;
+use crate::config::{KERNEL_HEAP_SIZE, PAGE_SIZE};
 
 #[global_allocator]
-static HEAP_ALLOCATOR: BuddyAllocator = BuddyAllocator::new(1);
+static HEAP_ALLOCATOR: BuddyAllocator = BuddyAllocator::new(PAGE_SIZE);
 
 static mut KERNEL_HEAP_SPACE: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
 

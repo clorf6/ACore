@@ -1,5 +1,6 @@
-use crate::config::{PAGE_SIZE, PAGE_SIZE_BITS};
 use super::page_table::PageTableEntry;
+use super::range::Step;
+use crate::config::{PAGE_SIZE, PAGE_SIZE_BITS};
 use core::fmt::{self, Debug, Formatter};
 
 pub const PA_WIDTH: usize = 56;
@@ -34,6 +35,12 @@ impl Debug for PhysAddr {
     }
 }
 
+impl Step for PhysAddr {
+    fn step(&mut self) {
+        self.0 += 1;
+    }
+}
+
 impl PhysAddr {
     pub fn floor(&self) -> PhysPageNum {
         PhysPageNum(self.0 / PAGE_SIZE)
@@ -52,7 +59,7 @@ impl PhysAddr {
         self.page_offset() == 0
     }
 }
- 
+
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct PhysPageNum(pub usize);
 
@@ -78,6 +85,12 @@ impl From<PhysPageNum> for usize {
 impl Debug for PhysPageNum {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("PPN:{:#x}", self.0))
+    }
+}
+
+impl Step for PhysPageNum {
+    fn step(&mut self) {
+        self.0 += 1;
     }
 }
 
@@ -124,6 +137,12 @@ impl From<VirtAddr> for usize {
 impl Debug for VirtAddr {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("VA:{:#x}", self.0))
+    }
+}
+
+impl Step for VirtAddr {
+    fn step(&mut self) {
+        self.0 += 1;
     }
 }
 
@@ -174,13 +193,19 @@ impl Debug for VirtPageNum {
     }
 }
 
+impl Step for VirtPageNum {
+    fn step(&mut self) {
+        self.0 += 1;
+    }
+}
+
 impl VirtPageNum {
     pub fn indexes(&self) -> [usize; 3] {
         let vpn = self.0;
         let x0 = vpn & 0x1FF;
         let x1 = (vpn >> 9) & 0x1FF;
         let x2 = (vpn >> 18) & 0x1FF;
-        [x0, x1, x2]
+        [x2, x1, x0]
     }
 }
 
@@ -214,5 +239,11 @@ impl From<PageOffset> for usize {
 impl Debug for PageOffset {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("Offset:{:#x}", self.0))
+    }
+}
+
+impl Step for PageOffset {
+    fn step(&mut self) {
+        self.0 += 1;
     }
 }

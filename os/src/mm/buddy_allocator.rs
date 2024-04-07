@@ -1,9 +1,9 @@
 use super::linked_list::LinkedList;
 use alloc::alloc::Layout;
 use core::alloc::GlobalAlloc;
-use core::ptr::null_mut;
-use core::cmp::{min, max};
+use core::cmp::{max, min};
 use core::mem::size_of;
+use core::ptr::null_mut;
 use spin::Mutex;
 
 const BUDDY_ALLOCATOR_LEVEL: usize = 32;
@@ -13,7 +13,9 @@ pub struct BuddyAllocator {
 
 impl BuddyAllocator {
     pub const fn new(minimum: usize) -> Self {
-        Self { allocator: Mutex::new(BuddyAllocatorInner::new(minimum)), }
+        Self {
+            allocator: Mutex::new(BuddyAllocatorInner::new(minimum)),
+        }
     }
 
     pub fn lock(&self) -> spin::MutexGuard<BuddyAllocatorInner> {
@@ -48,7 +50,11 @@ impl BuddyAllocatorInner {
         Self {
             free_lists: [LinkedList::new(); BUDDY_ALLOCATOR_LEVEL],
             total: 0,
-            minimum: if minimum < size_of::<usize>() { size_of::<usize>() } else { minimum },
+            minimum: if minimum < size_of::<usize>() {
+                size_of::<usize>()
+            } else {
+                minimum
+            },
             used: 0,
             need: 0,
         }
@@ -61,7 +67,9 @@ impl BuddyAllocatorInner {
         self.total += size;
         while size > 0 {
             let level = size.trailing_zeros() as usize;
-            unsafe { self.free_lists[level].push_front(begin); }
+            unsafe {
+                self.free_lists[level].push_front(begin);
+            }
             size -= 1 << level;
             begin += 1 << level;
         }
@@ -69,7 +77,9 @@ impl BuddyAllocatorInner {
 
     fn split(&mut self, big: usize, small: usize) {
         for i in (small..big).rev() {
-            let now = self.free_lists[i + 1].pop_front().expect("[buddy allocator] Free list is empty.");
+            let now = self.free_lists[i + 1]
+                .pop_front()
+                .expect("[buddy allocator] Free list is empty.");
             unsafe {
                 self.free_lists[i].push_front(now as usize + (1 << i));
                 self.free_lists[i].push_front(now as usize);
@@ -86,7 +96,9 @@ impl BuddyAllocatorInner {
                 self.free_lists[i].pop(node);
                 now = min(now, buddy);
             } else {
-                unsafe { self.free_lists[i].push_front(now); }
+                unsafe {
+                    self.free_lists[i].push_front(now);
+                }
                 break;
             }
         }
@@ -95,7 +107,7 @@ impl BuddyAllocatorInner {
     fn calc_size(&self, layout: &Layout) -> usize {
         max(
             max(layout.align(), self.minimum),
-            layout.size().next_power_of_two()
+            layout.size().next_power_of_two(),
         )
     }
 
@@ -105,7 +117,9 @@ impl BuddyAllocatorInner {
         for i in level..self.free_lists.len() {
             if !self.free_lists[i].is_empty() {
                 self.split(i, level);
-                let res = self.free_lists[level].pop_front().expect("[buddy allocator] Free list is empty.");
+                let res = self.free_lists[level]
+                    .pop_front()
+                    .expect("[buddy allocator] Free list is empty.");
                 self.used += size;
                 self.need += layout.size();
                 return res as *mut u8;
@@ -120,4 +134,3 @@ impl BuddyAllocatorInner {
         self.merge(level, ptr);
     }
 }
-
