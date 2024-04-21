@@ -1,7 +1,9 @@
-use super::address::{PhysPageNum, VirtPageNum, PPN_WIDTH};
+use super::address::{ PhysPageNum, VirtPageNum, VirtAddr, PPN_WIDTH };
 use super::frame_allocator::*;
+use super::range::Step;
 use alloc::collections::BTreeMap;
 use bitflags::*;
+use alloc::vec::Vec;
 use crate::println;
 
 bitflags! {
@@ -26,14 +28,14 @@ pub struct PageTableEntry {
 impl PageTableEntry {
     pub fn new(ppn: PhysPageNum, flags: PTEFlags) -> Self {
         PageTableEntry {
-            bits: ppn.0 << 10 | flags.bits as usize,
+            bits: (ppn.0 << 10) | (flags.bits as usize),
         }
     }
     pub fn empty() -> Self {
         PageTableEntry { bits: 0 }
     }
     pub fn ppn(&self) -> PhysPageNum {
-        (self.bits >> 10 & ((1 << PPN_WIDTH) - 1)).into()
+        ((self.bits >> 10) & ((1 << PPN_WIDTH) - 1)).into()
     }
     pub fn flags(&self) -> PTEFlags {
         PTEFlags::from_bits(self.bits as u8).unwrap()
@@ -127,16 +129,16 @@ impl PageTable {
         *pte = PageTableEntry::empty();
         let mut frame = self.dir_frames.get_mut(&last).unwrap();
         let mut ppn = frame.ppn;
-        last = frame.fa; 
+        last = frame.fa;
         frame.used -= 1;
-        //println!("used- {}, {}", frame.ppn.0, frame.used);
+        println!("used- {}, {}", frame.ppn.0, frame.used);
         while frame.used == 0 && frame.ppn != frame.fa {
             self.dir_frames.remove(&ppn);
             frame = self.dir_frames.get_mut(&last).unwrap();
             ppn = frame.ppn;
             last = frame.fa;
             frame.used -= 1;
-            //println!("used- {}, {}", frame.ppn.0, frame.used);
+            println!("used- {}, {}", frame.ppn.0, frame.used);
         }
     }
     #[allow(unused)]
@@ -150,6 +152,28 @@ impl PageTable {
         self.find_pte(vpn).0.map(|pte| *pte)
     }
     pub fn token(&self) -> usize {
-        8usize << 60 | self.root_ppn.0
+        (8usize << 60) | self.root_ppn.0
     }
+}
+
+pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
+    let page_table = PageTable::from_token(token);
+    let mut start = ptr as usize;
+    let end = start + len;
+    let mut v = Vec::new();
+    while start < end {
+        let start_va = VirtAddr::from(start);
+        let mut vpn = start_va.floor();
+        let ppn = page_table.translate(vpn).unwrap().ppn();
+        vpn.step();
+        let mut end_va: VirtAddr = vpn.into();
+        end_va = end_va.min(VirtAddr::from(end));
+        if end_va.page_offset() == 0 {
+            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..]);
+        } else {
+            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..end_va.page_offset()]);
+        }
+        start = end_va.into();
+    }
+    v
 }

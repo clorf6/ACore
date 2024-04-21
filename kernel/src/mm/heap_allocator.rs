@@ -1,4 +1,4 @@
-use super::buddy_allocator::BuddyAllocator;
+use allocator::buddy_allocator::BuddyAllocator;
 use crate::println;
 use crate::config::{KERNEL_HEAP_SIZE, PAGE_SIZE};
 

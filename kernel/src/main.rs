@@ -16,10 +16,15 @@ mod drivers;
 mod config;
 mod console;
 mod exception;
+mod logging;
 mod mm;
 mod sync;
+mod loader;
+pub mod syscall;
+pub mod trap;
 
 global_asm!(include_str!("entry.asm"));
+global_asm!(include_str!("link_app.S"));
 
 pub fn clear_bss() {
     extern "C" {
@@ -66,6 +71,8 @@ pub unsafe fn rust_main() -> ! {
     init_uart();
     clear_bss();
     mm::init();
+    logging::init();
+    trap::init();
     println!("Hello, world!!!");
     panic!("It should shutdown!");
 }

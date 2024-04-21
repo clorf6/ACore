@@ -1,4 +1,4 @@
-# os/src/entry.asm
+# kernel/src/entry.asm
     .section .text.entry
     .globl _start
 _start:
