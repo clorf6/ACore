@@ -2,6 +2,7 @@ mod context;
 
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
+use crate::task::{get_cur_task, PROCESSOR};
 use core::arch::{asm, global_asm};
 use riscv::register::{
     mtvec::TrapMode,
@@ -29,20 +30,23 @@ fn set_user_trap_entry() {
 }
 
 #[no_mangle]
-pub fn trap_handler(cx: &mut TrapContext) -> ! {
+pub fn trap_handler() -> ! {
     set_kernel_trap_entry();
     let scause = scause::read();
     let stval = stval::read();
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
-            cx.sepc += 4;
-            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
+            let mut ctx = get_cur_task().trap_ctx();
+            ctx.sepc += 4;
+            let result = syscall(ctx.x[17], [ctx.x[10], ctx.x[11], ctx.x[12]]) as usize;
+            ctx = get_cur_task().trap_ctx();
+            ctx.x[10] = result as usize;
         }
         Trap::Exception(Exception::StoreFault)
         | Trap::Exception(Exception::StorePageFault)
         | Trap::Exception(Exception::LoadFault)
         | Trap::Exception(Exception::LoadPageFault) => {
-            println!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
+            println!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, get_cur_task().trap_ctx().sepc);
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, kernel killed it.");
@@ -55,20 +59,22 @@ pub fn trap_handler(cx: &mut TrapContext) -> ! {
             );
         }
     }
-    trap_return(0);
+    trap_return();
 }
 
 #[no_mangle]
-pub fn trap_return(user_satp: usize) -> ! {
-    set_user_trap_entry();
-    let trap_cx_ptr = TRAP_CONTEXT;
+pub fn trap_return() -> ! {
     extern "C" {
         fn __alltraps();
         fn __restore();
     }
+    set_user_trap_entry();
+    let trap_cx_ptr = TRAP_CONTEXT;
+    let user_satp = get_cur_task().user_token();
     let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
     unsafe {
         asm!(
+            "csrr zero, sstatus",
             "fence.i",
             "jr {restore_va}",             
             restore_va = in(reg) restore_va,
@@ -81,7 +87,7 @@ pub fn trap_return(user_satp: usize) -> ! {
 
 #[no_mangle]
 pub fn trap_from_kernel() -> ! {
-    panic!("a trap from kernel!");
+    panic!("a trap {:?} from kernel!", scause::read().cause());
 }
 
 pub use context::TrapContext;

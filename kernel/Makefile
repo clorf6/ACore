@@ -1,6 +1,6 @@
 # Building
 TARGET := riscv64gc-unknown-none-elf
-MODE := release
+MODE := debug
 KERNEL_ELF := target/$(TARGET)/$(MODE)/kernel
 KERNEL_BIN := $(KERNEL_ELF).bin
 
@@ -31,10 +31,22 @@ kernel:
 clean:
 	@cargo clean
 
-QEMU_ARGS := -machine virt \
+RUN_ARGS := -machine virt \
 			 -nographic \
 			 -bios $(BOOTLOADER) \
 			 -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY)
 
+DEBUG_ARGS := -machine virt \
+			 -nographic \
+			 -bios $(BOOTLOADER) \
+			 -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY) \
+			 -s -S 
+
 run: build
-	@qemu-system-riscv64 $(QEMU_ARGS)
+	@qemu-system-riscv64 $(RUN_ARGS)
+
+debug: build
+	@qemu-system-riscv64 $(DEBUG_ARGS)
+
+gdbclient:
+	@gdb-multiarch -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'

@@ -15,7 +15,7 @@ impl TrapContext {
         self.x[2] = sp;
     }
     pub fn app_init_context(
-        entry: usize,
+        sepc: usize,
         sp: usize,
         kernel_satp: usize,
         kernel_sp: usize,
@@ -25,7 +25,7 @@ impl TrapContext {
         let mut cx = Self {
             x: [0; 32],
             sstatus: sstatus::read(),
-            sepc: entry,  
+            sepc,  
             kernel_satp,  
             kernel_sp,    
             trap_handler, 

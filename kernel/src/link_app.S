@@ -7,6 +7,10 @@ _num_app:
     .quad app_0_start
     .quad app_0_end
 
+    .global _app_names
+_app_names:
+    .string "hello_world"
+
     .section .data
     .global app_0_start
     .global app_0_end

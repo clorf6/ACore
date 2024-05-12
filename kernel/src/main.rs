@@ -22,6 +22,7 @@ mod sync;
 mod loader;
 pub mod syscall;
 pub mod trap;
+pub mod task;
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("link_app.S"));
@@ -73,6 +74,8 @@ pub unsafe fn rust_main() -> ! {
     mm::init();
     logging::init();
     trap::init();
+    task::init_tasks();
+    task::run_tasks();
     println!("Hello, world!!!");
     panic!("It should shutdown!");
 }
