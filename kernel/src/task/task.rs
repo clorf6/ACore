@@ -5,7 +5,7 @@ use spin::Mutex;
 use crate::config::TRAP_CONTEXT;
 use crate::trap::{TrapContext, trap_return, trap_handler};
 use super::{Pid, KernelStack, alloc_pid};
-
+use crate::println;
 pub enum TaskStatus {
     Ready,
     Running,
@@ -63,7 +63,7 @@ impl Task {
         let pid = alloc_pid();
         let kernel_stack = KernelStack::new(pid.0);
         let kernel_stack_top = kernel_stack.top();
-        let trap_ctx = trap_ctx_ppn.get_mut();
+        let trap_ctx: &mut TrapContext = trap_ctx_ppn.get_mut();
         *trap_ctx = TrapContext::app_init_context(
             user_sepc,
             user_sp,

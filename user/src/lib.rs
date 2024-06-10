@@ -15,7 +15,7 @@ const USER_HEAP_SIZE: usize = 16384;
 static mut HEAP_SPACE: [u8; USER_HEAP_SIZE] = [0; USER_HEAP_SIZE];
 
 #[global_allocator]
-static HEAP: BuddyAllocator = BuddyAllocator::new(4096);
+static HEAP: BuddyAllocator = BuddyAllocator::new(16384);
 
 #[no_mangle]
 #[link_section = ".text.entry"]

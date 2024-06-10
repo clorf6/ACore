@@ -1,5 +1,3 @@
-use core::num;
-
 use super::Task;
 use spin::Mutex;
 use alloc::collections::VecDeque;

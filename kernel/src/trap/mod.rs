@@ -2,16 +2,16 @@ mod context;
 
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
-use crate::task::{get_cur_task, PROCESSOR};
+use crate::task::{get_cur_task, suspend_and_yield, PROCESSOR};
 use core::arch::{asm, global_asm};
 use riscv::register::{
     mtvec::TrapMode,
-    scause::{self, Exception, Trap},
-    stval, stvec,
+    scause::{self, Exception, Trap, Interrupt},
+    stval, stvec, sip
 };
 use crate::println;
 
-global_asm!(include_str!("trap.S"));
+global_asm!(include_str!("trampoline.S"));
 
 pub fn init() {
     set_kernel_trap_entry();
@@ -50,6 +50,10 @@ pub fn trap_handler() -> ! {
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, kernel killed it.");
+        }
+        Trap::Interrupt(Interrupt::SupervisorSoft) => {
+            unsafe { asm!{"csrc sip, 2"}; }
+            suspend_and_yield();
         }
         _ => {
             panic!(

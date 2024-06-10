@@ -281,6 +281,7 @@ impl MemorySet {
         assert_eq!(magic, [0x7f, 0x45, 0x4c, 0x46], "invalid elf!");
         let ph_count = elf_header.pt2.ph_count();
         let mut max_end_vpn = VirtPageNum(0);
+        println!("{}, {}", elf_data.len(), ph_count);
         for i in 0..ph_count {
             let ph = elf.program_header(i).unwrap();
             if ph.get_type().unwrap() == xmas_elf::program::Type::Load {
@@ -312,15 +313,6 @@ impl MemorySet {
         memory_set.push(
             MapArea::new(
                 user_stack_bottom.into(),
-                user_stack_top.into(),
-                MapType::Framed,
-                MapPermission::R | MapPermission::W | MapPermission::U,
-            ),
-            None,
-        );
-        memory_set.push(
-            MapArea::new(
-                user_stack_top.into(),
                 user_stack_top.into(),
                 MapType::Framed,
                 MapPermission::R | MapPermission::W | MapPermission::U,

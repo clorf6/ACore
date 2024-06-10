@@ -20,6 +20,7 @@ mod logging;
 mod mm;
 mod sync;
 mod loader;
+mod time;
 pub mod syscall;
 pub mod trap;
 pub mod task;
@@ -33,14 +34,6 @@ pub fn clear_bss() {
         fn ebss();
     }
     (sbss as usize..ebss as usize).for_each(|a| unsafe { (a as *mut u8).write_volatile(0) });
-}
-
-pub fn init_time() {
-    // let mtime = 0x0200bff8 as *const usize;
-    // let time = mtime.read_volatile();
-    // let mtimecmp = 0x02004000 as *mut usize;
-    // *mtimecmp = time;
-    // ToDo
 }
 
 #[no_mangle]
@@ -61,7 +54,7 @@ pub unsafe fn rust_start() {
     sie::set_ssoft();
     pmpaddr0::write(0x3fffffffffffff);
     pmpcfg0::write(0xf);
-    // init_time();
+    time::init_time();
     unsafe {
         asm!("mret", options(noreturn));
     }
