@@ -9,12 +9,12 @@ static mut TIME_SCRATCH: [[usize; 5]; CPU_NUMBER] = [[0; 5]; CPU_NUMBER];
 global_asm!(include_str!("trap.S"));
 
 pub fn get_time() -> usize {
-    unsafe { *(MTIME_ADDR as *const usize) }
+    unsafe { (MTIME_ADDR as *const usize).read_volatile() }
 }
 
 pub fn set_time(addr: *mut usize, time: usize) {
     unsafe { 
-        *addr = time;
+        addr.write_volatile(time);
     }
 }
 
@@ -26,7 +26,7 @@ pub unsafe fn init_time() {
     let scratch = &mut TIME_SCRATCH[hartid];
     scratch[0] = addr;
     scratch[1] = TIME_PERIOD;
-    mscratch::write(scratch as *mut _ as usize);
+    mscratch::write(scratch.as_ptr() as usize);
     extern "C" {
         fn __timetrap();
     }

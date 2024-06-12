@@ -1,7 +1,7 @@
 use super::address::{PhysAddr, PhysPageNum};
-use crate::config::MEMORY_END;
+use crate::config::FRAME_END;
 use crate::println;
-use crate::sync::UPSafeCell;
+use sync::UPSafeCell;
 use alloc::vec::Vec;
 use lazy_static::*;
 
@@ -18,7 +18,7 @@ pub fn init_frame_allocator() {
     }
     FRAME_ALLOCATOR.get().init(
         PhysAddr::from(ekernel as usize).ceil(),
-        PhysAddr::from(MEMORY_END).floor(),
+        PhysAddr::from(FRAME_END).floor(),
     );
 }
 trait FrameAllocator {

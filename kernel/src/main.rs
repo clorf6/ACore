@@ -8,19 +8,20 @@ use core::arch::asm;
 use core::arch::global_asm;
 // use crate::config::TIME_PERIOD;
 use riscv::register::*;
+use crate::loader::list_apps;
+
 extern crate alloc;
 extern crate bitflags;
 
 #[macro_use]
 mod drivers;
 mod config;
-mod console;
 mod exception;
 mod logging;
 mod mm;
-mod sync;
 mod loader;
 mod time;
+pub mod console;
 pub mod syscall;
 pub mod trap;
 pub mod task;
@@ -61,14 +62,15 @@ pub unsafe fn rust_start() {
 }
 
 #[no_mangle]
-pub unsafe fn rust_main() -> ! {
+pub fn rust_main() -> ! {
     init_uart();
     clear_bss();
     mm::init();
     logging::init();
     trap::init();
+    list_apps();
     task::init_tasks();
+    mm::buffer_test();
     task::run_tasks();
-    println!("Hello, world!!!");
     panic!("It should shutdown!");
 }

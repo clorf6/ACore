@@ -1,7 +1,8 @@
-use crate::sync::UPSafeCell;
+use sync::UPSafeCell;
 use alloc::vec::Vec;
 use lazy_static::*;
 
+#[derive(Ord, PartialOrd, Eq, PartialEq)]
 pub struct Pid(pub usize);
 
 impl Drop for Pid {
@@ -18,7 +19,7 @@ pub struct PidAllocator {
 impl PidAllocator {
     pub fn new() -> Self {
         Self {
-            cur: 0,
+            cur: 1,
             recycled: Vec::new(),
         }
     }

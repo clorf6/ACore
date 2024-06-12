@@ -2,9 +2,10 @@ use super::address::{PhysAddr, PhysPageNum, VirtAddr, VirtPageNum};
 use super::frame_allocator::{frame_alloc, FrameTracker};
 use super::page_table::{PTEFlags, PageTable, PageTableEntry};
 use super::range::{Range, Step};
+use super::buffer_position;
 use crate::config::*;
 use crate::println;
-use crate::sync::UPSafeCell;
+use sync::UPSafeCell;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use alloc::collections::BTreeMap;
@@ -170,6 +171,19 @@ impl MemorySet {
             None,
         );
     }
+
+    pub fn map_identical(
+        &mut self,
+        start_va: VirtAddr,
+        end_va: VirtAddr,
+        permission: MapPermission,
+    ) {
+        self.push(
+            MapArea::new(start_va, end_va, MapType::Identical, permission),
+            None,
+        );
+    }
+
     pub fn unmap(&mut self, start_vpn: VirtPageNum) {
         if let Some((idx, area)) = self
             .areas
@@ -185,23 +199,28 @@ impl MemorySet {
         extern "C" {
             fn strampoline();
         }
+        println!("mapping trampoline {:#x}, {:#x}", TRAMPOLINE, strampoline as usize);
         self.page_table.map(
             VirtAddr::from(TRAMPOLINE).into(),
             PhysAddr::from(strampoline as usize).into(),
             PTEFlags::R | PTEFlags::X,
         );
     }
+
+    pub fn map_buffer(&mut self, pid: usize) {
+        let (bottom, _) = buffer_position(pid);
+        println!("mapping shared buffer {:#x}, {:#x}", BUFFER, bottom);
+        self.page_table.map(
+            VirtAddr::from(BUFFER).into(),
+            PhysAddr::from(bottom).into(),
+            PTEFlags::R | PTEFlags::W | PTEFlags::U,
+        );
+    }
+
     pub fn new_kernel() -> Self {
         let mut memory_set = Self::new_bare();
         memory_set.map_trampoline();
-        println!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
-        println!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
-        println!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
-        println!(
-            ".bss [{:#x}, {:#x})",
-            sbss_with_stack as usize, ebss as usize
-        );
-        println!("mapping .text section");
+        println!("[kernel] mapping .text section [{:#x}, {:#x})", stext as usize, etext as usize);
         memory_set.push(
             MapArea::new(
                 (stext as usize).into(),
@@ -211,7 +230,7 @@ impl MemorySet {
             ),
             None,
         );
-        println!("mapping .rodata section");
+        println!("[kernel] mapping .rodata section [{:#x}, {:#x})", srodata as usize, erodata as usize);
         memory_set.push(
             MapArea::new(
                 (srodata as usize).into(),
@@ -221,7 +240,7 @@ impl MemorySet {
             ),
             None,
         );
-        println!("mapping .data section");
+        println!("[kernel] mapping .data section [{:#x}, {:#x})", sdata as usize, edata as usize);
         memory_set.push(
             MapArea::new(
                 (sdata as usize).into(),
@@ -231,7 +250,9 @@ impl MemorySet {
             ),
             None,
         );
-        println!("mapping .bss section");
+        println!("[kernel] mapping .bss section [{:#x}, {:#x})",
+                 sbss_with_stack as usize, ebss as usize
+        );
         memory_set.push(
             MapArea::new(
                 (sbss_with_stack as usize).into(),
@@ -241,17 +262,27 @@ impl MemorySet {
             ),
             None,
         );
-        println!("mapping physical memory");
+        println!("[kernel] mapping physical memory [{:#x}, {:#x})", ekernel as usize, FRAME_END);
         memory_set.push(
             MapArea::new(
                 (ekernel as usize).into(),
+                FRAME_END.into(),
+                MapType::Identical,
+                MapPermission::R | MapPermission::W,
+            ),
+            None,
+        );
+        println!("[kernel] mapping shared buffer [{:#x}, {:#x})", FRAME_END, MEMORY_END);
+        memory_set.push(
+            MapArea::new(
+                FRAME_END.into(),
                 MEMORY_END.into(),
                 MapType::Identical,
                 MapPermission::R | MapPermission::W,
             ),
             None,
         );
-        println!("mapping memory-mapped registers");
+        println!("[kernel] mapping memory-mapped registers");
         for pair in MMIO {
             memory_set.push(
                 MapArea::new(
@@ -281,7 +312,6 @@ impl MemorySet {
         assert_eq!(magic, [0x7f, 0x45, 0x4c, 0x46], "invalid elf!");
         let ph_count = elf_header.pt2.ph_count();
         let mut max_end_vpn = VirtPageNum(0);
-        println!("{}, {}", elf_data.len(), ph_count);
         for i in 0..ph_count {
             let ph = elf.program_header(i).unwrap();
             if ph.get_type().unwrap() == xmas_elf::program::Type::Load {
@@ -298,6 +328,8 @@ impl MemorySet {
                 if ph_flags.is_execute() {
                     map_perm |= MapPermission::X;
                 }
+                println!("[user] mapping [{:#x}, {:#x})",
+                         start_va.0, end_va.0);
                 let map_area = MapArea::new(start_va, end_va, MapType::Framed, map_perm);
                 max_end_vpn = map_area.vpn_range.r;
                 memory_set.push(
@@ -310,6 +342,8 @@ impl MemorySet {
         let mut user_stack_bottom: usize = max_end_va.into();
         user_stack_bottom += PAGE_SIZE;
         let user_stack_top = user_stack_bottom + USER_STACK_SIZE;
+        println!("[user] mapping user stack [{:#x}, {:#x})",
+                 user_stack_bottom, user_stack_top);
         memory_set.push(
             MapArea::new(
                 user_stack_bottom.into(),
@@ -319,6 +353,8 @@ impl MemorySet {
             ),
             None,
         );
+        println!("[user] mapping trap context [{:#x}, {:#x})",
+                 TRAP_CONTEXT, TRAMPOLINE);
         memory_set.push(
             MapArea::new(
                 TRAP_CONTEXT.into(),

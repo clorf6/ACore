@@ -3,7 +3,7 @@ use spin::Mutex;
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use lazy_static::*;
-use crate::loader::{get_app_data, get_num_app};
+use crate::loader::{get_app_data, get_app_data_by_name, get_num_app};
 use crate::println;
 pub struct TaskManager {
     ready_tasks: VecDeque<Arc<Task>>,
@@ -46,9 +46,6 @@ pub fn task_num() -> i32 {
 }
 
 pub fn init_tasks() {
-    let num_apps = get_num_app();
-    for i in 0..num_apps {
-        let task = Task::new(get_app_data(i));
-        push_task(Arc::new(task));
-    }
+    let init_task = Task::new(get_app_data_by_name("initproc").expect("[task] No initproc."));
+    push_task(Arc::new(init_task));
 }

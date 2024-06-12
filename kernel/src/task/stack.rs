@@ -2,7 +2,7 @@ use crate::config::{KERNEL_STACK_SIZE, PAGE_SIZE, TRAMPOLINE};
 use crate::mm::{MapPermission, VirtPageNum, KERNEL_SPACE};
 
 pub fn kernel_stack_position(app_id: usize) -> (usize, usize) {
-    let top = TRAMPOLINE - app_id * (KERNEL_STACK_SIZE + PAGE_SIZE); // not use guard page
+    let top = TRAMPOLINE - app_id * (KERNEL_STACK_SIZE + PAGE_SIZE);
     let bottom = top - KERNEL_STACK_SIZE;
     (bottom, top)
 }
@@ -25,6 +25,11 @@ impl KernelStack {
     pub fn top(&self) -> usize {
         let (_, top) = kernel_stack_position(self.pid);
         top
+    }
+
+    pub fn bottom(&self) -> usize {
+        let (bottom, _) = kernel_stack_position(self.pid);
+        bottom
     }
 }
 

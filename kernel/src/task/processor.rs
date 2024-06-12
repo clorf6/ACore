@@ -61,7 +61,7 @@ pub fn schedule(status: TaskStatus, add: bool, exit_code: isize) {
     let idle_task_ctx_ptr = get_idle_task_ctx();
     let task = get_cur_task();
     task.inner.lock().task_status = status;
-    task.inner.lock().exit_code = exit_code;
+    //task.inner.lock().exit_code = exit_code;
     let task_ctx_ptr = task.task_ctx_ptr() as *mut TaskContext;
     if add { push_task(task); }
     unsafe { __switch(task_ctx_ptr, idle_task_ctx_ptr) };

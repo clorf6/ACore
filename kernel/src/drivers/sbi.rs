@@ -4,7 +4,7 @@ use core::sync::atomic::{AtomicPtr, Ordering};
 use core::fmt::{self, Write};
 use crate::config::VIRT_UART;
 use lazy_static::lazy_static;
-use crate::sync::UPSafeCell;
+use sync::UPSafeCell;
 
 #[derive(Debug)]
 pub struct UartPort {

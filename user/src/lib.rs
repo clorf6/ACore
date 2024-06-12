@@ -4,18 +4,21 @@
 
 #[macro_use]
 pub mod console;
+pub mod process;
 mod exception;
 mod syscall;
 
 use allocator::buddy_allocator::BuddyAllocator;
 use syscall::*;
 
+extern crate alloc;
+
 const USER_HEAP_SIZE: usize = 16384;
 
 static mut HEAP_SPACE: [u8; USER_HEAP_SIZE] = [0; USER_HEAP_SIZE];
 
 #[global_allocator]
-static HEAP: BuddyAllocator = BuddyAllocator::new(16384);
+static HEAP: BuddyAllocator = BuddyAllocator::new(256);
 
 #[no_mangle]
 #[link_section = ".text.entry"]
