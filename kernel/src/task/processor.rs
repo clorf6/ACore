@@ -1,12 +1,13 @@
 use alloc::sync::Arc;
 
 use lazy_static::lazy_static;
+use log::debug;
 use spin::Mutex;
 
 use crate::println;
 use crate::task::manager::get_server;
 
-use super::{__switch, get_front_task, push_back, Task, TaskContext, TaskStatus};
+use super::{__switch, get_front_task, KernelStack, push_back, set_server, Task, task_num, TaskContext, TaskStatus};
 
 pub struct Processor {
     cur: Option<Arc<Task>>,
@@ -55,6 +56,7 @@ pub fn run_tasks() {
         let task = get_front_task();
         if let Some(task) = task {
             task.inner.lock().task_status = TaskStatus::Running;
+            //println!("run task {} server {} num {}", task.pid, get_server(), task_num());
             let idle_task_ctx_ptr = get_idle_task_ctx();
             let task_ctx_ptr = task.task_ctx_ptr();
             PROCESSOR.lock().cur = Some(task); 
@@ -67,15 +69,20 @@ pub fn run_tasks() {
     }
 }
 
-pub fn schedule(status: TaskStatus, add: bool) {
+pub fn schedule(add: bool) {
     let idle_task_ctx_ptr = get_idle_task_ctx();
     let task = take_cur_task();
+    //println!("schedule task {} server {} num {}", task.pid, get_server(), task_num());
     let mut task_ctx_ptr = task.task_ctx_ptr() as *mut TaskContext;
-    if status == TaskStatus::Zombie {
-        task.inner.lock().task_status = status;
+    if add { 
+        task.inner.lock().task_status = TaskStatus::Ready;
+        push_back(task); 
+    }
+    else {
+        task.inner.lock().task_status = TaskStatus::Zombie;
         task.inner.lock().memory.clean();
         task_ctx_ptr = &mut TaskContext::empty() as *mut _;
+        drop(task);
     }
-    if add { push_back(task); }
     unsafe { __switch(task_ctx_ptr, idle_task_ctx_ptr) };
 }

@@ -1,6 +1,6 @@
 use core::panic::PanicInfo;
 use log::*;
-use crate::drivers::sbi::shutdown;
+use crate::console::shutdown;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {

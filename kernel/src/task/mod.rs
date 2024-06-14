@@ -11,9 +11,9 @@ pub use manager::{push_back, push_front, get_front_task, init_tasks, task_num, M
 pub use processor::{get_cur_task, take_cur_task, schedule, run_tasks};
 
 pub fn suspend_and_yield() {
-    schedule(TaskStatus::Ready, true);
+    schedule(true);
 }
 
 pub fn exit_and_yield() {
-    schedule(TaskStatus::Zombie, false);
+    schedule(false);
 }

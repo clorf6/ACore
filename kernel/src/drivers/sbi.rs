@@ -53,39 +53,44 @@ impl UartPort {
             lcr.write(0x03); // Disable DLAB, set data length to 8 bits
             fcr.write(0xC7); // Enable FIFO, clear them, with 14-byte threshold
             mcr.write(0x0B); // IRQs enabled, RTS/DSR set
-            ier.write(0x02); // Enable interrupts
+            ier.write(0x01); // Enable interrupts
         }
     }
 
     pub fn send(&mut self, data: u8) {
         let dbr = self.dbr.load(Ordering::Relaxed);
         unsafe {
-            let empty_flag = self.lsr.load(Ordering::Relaxed).read() & 0x20;
             match data {
                 8 | 0x7F => {
-                    while empty_flag == 0 { core::hint::spin_loop(); }
+                    while self.lsr.load(Ordering::Relaxed).read() & 0x20 == 0 { core::hint::spin_loop(); }
                     dbr.write(8);
-                    while empty_flag == 0 { core::hint::spin_loop(); }
+                    while self.lsr.load(Ordering::Relaxed).read() & 0x20 == 0 { core::hint::spin_loop(); }
                     dbr.write(b' ');
-                    while empty_flag == 0 { core::hint::spin_loop(); }
+                    while self.lsr.load(Ordering::Relaxed).read() & 0x20 == 0 { core::hint::spin_loop(); }
                     dbr.write(8);
                 }
                 _ => {
-                    while empty_flag == 0 { core::hint::spin_loop(); }
+                    while self.lsr.load(Ordering::Relaxed).read() & 0x20 == 0 { core::hint::spin_loop(); }
                     dbr.write(data);
                 }
             }
         }
     }
 
-    #[allow(dead_code)]
     pub fn receive(&mut self) -> u8 {
         let dbr = self.dbr.load(Ordering::Relaxed);
         unsafe {
-            let available_flag = self.lsr.load(Ordering::Relaxed).read() & 0x01;
-            while available_flag == 0 { core::hint::spin_loop(); }
+            while self.lsr.load(Ordering::Relaxed).read() & 0x01 == 0 { core::hint::spin_loop(); }
             dbr.read()
         }
+    }
+
+    pub fn read_char(&mut self) -> u8 {
+        self.receive()
+    }
+
+    pub fn write_char(&mut self, c: u8) {
+        self.send(c);
     }
 }
 
@@ -97,12 +102,4 @@ impl Write for UartPort {
         }
         Ok(())
     }
-}
-
-pub fn shutdown(reason: bool) -> ! {
-    let virt_test = AtomicPtr::new(0x100000 as *mut u32);
-    let virt_addr = virt_test.load(Ordering::Relaxed);
-    let exit_code = if reason { 0x5555 } else { (1 << 16) | 0x3333 };
-    unsafe { virt_addr.write(exit_code); }
-    unreachable!()
 }

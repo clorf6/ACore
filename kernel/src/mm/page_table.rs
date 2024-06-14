@@ -88,10 +88,10 @@ impl PageTable {
                 let frame = frame_alloc().unwrap();
                 *pte = PageTableEntry::new(frame.ppn, PTEFlags::V);
                 self.dir_frames.insert(frame.ppn, frame);
-                if let Some(frame) = self.dir_frames.get_mut(&ppn) {
-                    frame.used += 1;
-                    //println!("used+ {}, {}", frame.ppn.0, frame.used);
-                }
+                // if let Some(frame) = self.dir_frames.get_mut(&ppn) {
+                //     frame.used += 1;
+                //     //println!("used+ {}, {}", frame.ppn.0, frame.used);
+                // }
             }
             ppn = pte.ppn();
         }
@@ -118,10 +118,10 @@ impl PageTable {
         let (pte, last) = self.create_pte(vpn);
         assert!(!pte.is_valid(), "vpn {:?} is mapped before mapping", vpn);
         *pte = PageTableEntry::new(ppn, flags | PTEFlags::V);
-        if let Some(frame) = self.dir_frames.get_mut(&last) {
-            frame.used += 1;
-            //println!("used+ {}, {}", frame.ppn.0, frame.used);
-        }
+        // if let Some(frame) = self.dir_frames.get_mut(&last) {
+        //     frame.used += 1;
+        //     //println!("used+ {}, {}", frame.ppn.0, frame.used);
+        // }
     }
     pub fn unmap(&mut self, vpn: VirtPageNum) {
         let res = self.find_pte(vpn);
@@ -129,19 +129,19 @@ impl PageTable {
         let mut last = res.1;
         assert!(pte.is_valid(), "vpn {:?} is invalid before unmapping", vpn);
         *pte = PageTableEntry::empty();
-        let mut frame = self.dir_frames.get_mut(&last).unwrap();
-        let mut ppn = frame.ppn;
-        last = frame.fa;
-        frame.used -= 1;
-        println!("used- {}, {}", frame.ppn.0, frame.used);
-        while frame.used == 0 && frame.ppn != frame.fa {
-            self.dir_frames.remove(&ppn);
-            frame = self.dir_frames.get_mut(&last).unwrap();
-            ppn = frame.ppn;
-            last = frame.fa;
-            frame.used -= 1;
-            println!("used- {}, {}", frame.ppn.0, frame.used);
-        }
+        // let mut frame = self.dir_frames.get_mut(&last).unwrap();
+        // let mut ppn = frame.ppn;
+        // last = frame.fa;
+        // frame.used -= 1;
+        // //println!("used- {}, {}", frame.ppn.0, frame.used);
+        // while frame.used == 0 && frame.ppn != frame.fa {
+        //     self.dir_frames.remove(&ppn);
+        //     frame = self.dir_frames.get_mut(&last).unwrap();
+        //     ppn = frame.ppn;
+        //     last = frame.fa;
+        //     frame.used -= 1;
+        //     //println!("used- {}, {}", frame.ppn.0, frame.used);
+        // }
     }
     #[allow(unused)]
     pub fn from_token(satp: usize) -> Self {
@@ -203,4 +203,10 @@ pub fn translated_string(token: usize, ptr: *const u8) -> String {
         }
     }
     ret
+}
+
+pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
+    let page_table = PageTable::from_token(token);
+    let va = ptr as usize;
+    page_table.translate_va(VirtAddr::from(va)).unwrap().get_mut()
 }

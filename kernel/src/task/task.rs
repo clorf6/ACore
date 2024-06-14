@@ -40,11 +40,11 @@ impl TaskContext {
 
 pub struct Task {
     pub pid: usize,
-    pub kernel_stack: KernelStack,
     pub inner: Mutex<TaskInner>,
 }
 
 pub struct TaskInner {
+    pub kernel_stack: KernelStack,
     pub trap_ctx: PhysPageNum,
     pub task_ctx: TaskContext,
     pub task_status: TaskStatus,
@@ -75,8 +75,8 @@ impl Task {
         memory_set.map_buffer(pid);
         Self {
             pid,
-            kernel_stack,
             inner: Mutex::new(TaskInner {
+                    kernel_stack,
                     trap_ctx: trap_ctx_ppn,
                     task_ctx: TaskContext::new(trap_return as usize, kernel_stack_top),
                     task_status: TaskStatus::Ready,
@@ -87,7 +87,7 @@ impl Task {
 
     pub fn fork(self: &Arc<Self>, pid: usize) -> Arc<Self> {
         let mut parent_inner = self.inner.lock();
-        let memory_set = MemorySet::from_user(&parent_inner.memory);
+        let mut memory_set = MemorySet::from_user(&parent_inner.memory);
         let trap_ctx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap()
@@ -96,11 +96,12 @@ impl Task {
         let kernel_stack_top = kernel_stack.top();
         let trap_ctx: &mut TrapContext = trap_ctx_ppn.get_mut();
         trap_ctx.kernel_sp = kernel_stack_top;
+        memory_set.map_buffer(pid);
         Arc::new( Self {
             pid,
-            kernel_stack,
             inner: unsafe {
                 Mutex::new(TaskInner {
+                    kernel_stack,
                     trap_ctx: trap_ctx_ppn,
                     task_ctx: TaskContext::new(trap_return as usize, kernel_stack_top),
                     task_status: TaskStatus::Ready,
@@ -111,7 +112,8 @@ impl Task {
     }
 
     pub fn exec(&self, elf_data: &[u8]) {
-        let (memory_set, user_sp, user_sepc) = MemorySet::from_elf(elf_data);
+        let (mut memory_set, user_sp, user_sepc) = MemorySet::from_elf(elf_data);
+        memory_set.map_buffer(self.pid);
         let trap_ctx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap()
@@ -123,7 +125,7 @@ impl Task {
             user_sepc,
             user_sp,
             KERNEL_SPACE.get().token(),
-            self.kernel_stack.top(),
+            self.inner.lock().kernel_stack.top(),
             trap_handler as usize,
         );
     }

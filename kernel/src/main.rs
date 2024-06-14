@@ -10,12 +10,12 @@ use core::arch::asm;
 use core::arch::global_asm;
 
 use lazy_static::*;
-// use crate::config::TIME_PERIOD;
 use riscv::register::*;
 
 use crate::drivers::sbi::init_uart;
 use crate::loader::list_apps;
 use log::*;
+use crate::console::{getchar, putchar};
 
 #[macro_use]
 mod drivers;

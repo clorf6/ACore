@@ -5,10 +5,12 @@ use super::{Pid, alloc_pid};
 
 pub struct Process {
     pub pid: Pid,
+
     inner: Mutex<ProcessInner>,
 }
 
 pub struct ProcessInner {
+    pub done: bool,
     pub parent: Option<Weak<Process>>,
     pub children: Vec<Arc<Process>>,
     pub exit_code: isize,
@@ -23,6 +25,7 @@ impl Process {
             pid,
             inner: unsafe {
                 Mutex::new(ProcessInner {
+                    done: false,
                     parent: None,
                     children: Vec::new(),
                     exit_code: 0,

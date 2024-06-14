@@ -4,15 +4,24 @@
 #[macro_use]
 extern crate user;
 
-use user::{exec, fork};
+use user::{exec, fork, wait, yield_};
 #[no_mangle]
 pub fn main() -> i32 {
-    println!("[User] Init process started!");
     if fork() == 0 {
-        println!("[User] fork child!");
-        exec("hello\0");
+        exec("user_shell\0");
     } else {
-        println!("[User] fork father!");
+        loop {
+            let mut exit_code: i32 = 0;
+            let pid = wait(&mut exit_code);
+            if pid == -1 {
+                yield_();
+                continue;
+            }
+            println!(
+                "[initproc] Released a zombie process, pid={}, exit_code={}",
+                pid, exit_code,
+            );
+        }
     }
     0
 }

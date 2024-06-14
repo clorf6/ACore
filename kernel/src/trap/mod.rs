@@ -38,6 +38,7 @@ pub fn trap_handler() {
         Trap::Exception(Exception::UserEnvCall) => {
             let mut ctx = get_cur_task().trap_ctx();
             ctx.sepc += 4;
+            //println!("syscall id = {}, pid {}", ctx.x[17], get_cur_task().pid);
             let result = syscall(ctx.x[17], [ctx.x[10], ctx.x[11], ctx.x[12]]) as usize;
             ctx = get_cur_task().trap_ctx();
             ctx.x[10] = result;

@@ -218,7 +218,7 @@ impl MemorySet {
     }
     pub fn map_buffer(&mut self, pid: usize) {
         let (bottom, _) = buffer_position(pid);
-        debug!("mapping shared buffer {:#x}, {:#x}", BUFFER, bottom);
+        debug!("mapping shared buffer {:#x}, {:#x} with pid {}", BUFFER, bottom, pid);
         self.page_table.map(
             VirtAddr::from(BUFFER).into(),
             PhysAddr::from(bottom).into(),
