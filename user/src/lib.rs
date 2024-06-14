@@ -9,7 +9,8 @@ mod exception;
 mod syscall;
 
 use allocator::buddy_allocator::BuddyAllocator;
-use syscall::*;
+pub use syscall::*;
+pub use process::*;
 
 extern crate alloc;
 
@@ -28,6 +29,7 @@ pub extern "C" fn _start() -> ! {
         let end = begin + USER_HEAP_SIZE;
         HEAP.add(begin, end);
     }
+    init_processes();
     exit(main());
 }
 

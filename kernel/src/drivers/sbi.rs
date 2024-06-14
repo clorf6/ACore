@@ -99,9 +99,10 @@ impl Write for UartPort {
     }
 }
 
-pub unsafe fn shutdown() -> ! {
+pub fn shutdown(reason: bool) -> ! {
     let virt_test = AtomicPtr::new(0x100000 as *mut u32);
     let virt_addr = virt_test.load(Ordering::Relaxed);
-    unsafe { virt_addr.write(0x5555); }
+    let exit_code = if reason { 0x5555 } else { (1 << 16) | 0x3333 };
+    unsafe { virt_addr.write(exit_code); }
     unreachable!()
 }

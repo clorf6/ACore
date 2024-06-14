@@ -1,8 +1,13 @@
-use spin::Mutex;
-use super::{__switch, front_task, push_task, Task, TaskContext, TaskStatus};
 use alloc::sync::Arc;
+
 use lazy_static::lazy_static;
+use spin::Mutex;
+
 use crate::println;
+use crate::task::manager::get_server;
+
+use super::{__switch, get_front_task, push_back, Task, TaskContext, TaskStatus};
+
 pub struct Processor {
     cur: Option<Arc<Task>>,
     idle_task_ctx: TaskContext,
@@ -29,22 +34,27 @@ impl Processor {
     }
 }
 
+lazy_static! {
+    pub static ref PROCESSOR: Mutex<Processor> = Mutex::new(Processor::new());
+}
+
 pub fn get_cur_task() -> Arc<Task> {
     PROCESSOR.lock().cur_task().expect("[kernel] No running task currently.")
+}
+
+pub fn take_cur_task() -> Arc<Task> {
+    PROCESSOR.lock().take_cur_task().expect("[kernel] No running task currently.")
 }
 
 pub fn get_idle_task_ctx() -> *mut TaskContext {
     PROCESSOR.lock().idle_task_ctx_ptr()
 }
 
-lazy_static! {
-    pub static ref PROCESSOR: Mutex<Processor> = Mutex::new(Processor::new());
-}
-
 pub fn run_tasks() {
     loop {
-        let task = front_task();
+        let task = get_front_task();
         if let Some(task) = task {
+            task.inner.lock().task_status = TaskStatus::Running;
             let idle_task_ctx_ptr = get_idle_task_ctx();
             let task_ctx_ptr = task.task_ctx_ptr();
             PROCESSOR.lock().cur = Some(task); 
@@ -57,12 +67,15 @@ pub fn run_tasks() {
     }
 }
 
-pub fn schedule(status: TaskStatus, add: bool, exit_code: isize) {
+pub fn schedule(status: TaskStatus, add: bool) {
     let idle_task_ctx_ptr = get_idle_task_ctx();
-    let task = get_cur_task();
-    task.inner.lock().task_status = status;
-    //task.inner.lock().exit_code = exit_code;
-    let task_ctx_ptr = task.task_ctx_ptr() as *mut TaskContext;
-    if add { push_task(task); }
+    let task = take_cur_task();
+    let mut task_ctx_ptr = task.task_ctx_ptr() as *mut TaskContext;
+    if status == TaskStatus::Zombie {
+        task.inner.lock().task_status = status;
+        task.inner.lock().memory.clean();
+        task_ctx_ptr = &mut TaskContext::empty() as *mut _;
+    }
+    if add { push_back(task); }
     unsafe { __switch(task_ctx_ptr, idle_task_ctx_ptr) };
 }

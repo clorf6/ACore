@@ -3,24 +3,28 @@
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
 
-use crate::drivers::sbi::init_uart;
-use core::arch::asm;
-use core::arch::global_asm;
-// use crate::config::TIME_PERIOD;
-use riscv::register::*;
-use crate::loader::list_apps;
-
 extern crate alloc;
 extern crate bitflags;
+
+use core::arch::asm;
+use core::arch::global_asm;
+
+use lazy_static::*;
+// use crate::config::TIME_PERIOD;
+use riscv::register::*;
+
+use crate::drivers::sbi::init_uart;
+use crate::loader::list_apps;
+use log::*;
 
 #[macro_use]
 mod drivers;
 mod config;
 mod exception;
-mod logging;
 mod mm;
 mod loader;
 mod time;
+pub mod logging;
 pub mod console;
 pub mod syscall;
 pub mod trap;
@@ -65,12 +69,11 @@ pub unsafe fn rust_start() {
 pub fn rust_main() -> ! {
     init_uart();
     clear_bss();
-    mm::init();
     logging::init();
+    mm::init();
     trap::init();
     list_apps();
     task::init_tasks();
-    mm::buffer_test();
     task::run_tasks();
     panic!("It should shutdown!");
 }

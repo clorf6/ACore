@@ -1,9 +1,13 @@
-use super::address::{PhysAddr, PhysPageNum};
+use alloc::vec::Vec;
+
+use lazy_static::*;
+use sync::UPSafeCell;
+
 use crate::config::FRAME_END;
 use crate::println;
-use sync::UPSafeCell;
-use alloc::vec::Vec;
-use lazy_static::*;
+use log::info;
+
+use super::address::{PhysAddr, PhysPageNum};
 
 type FrameAllocatorImpl = StackFrameAllocator;
 
@@ -35,7 +39,7 @@ pub struct StackFrameAllocator {
 
 impl StackFrameAllocator {
     pub fn init(&mut self, l: PhysPageNum, r: PhysPageNum) {
-        println!("Frame range: {} {}", l.0, r.0);
+        info!("[kernel] frame range: [{:x}, {:x})", l.0, r.0);
         self.cur = l.0;
         self.end = r.0;
     }

@@ -1,6 +1,7 @@
 use crate::config::{FRAME_END, PAGE_SIZE};
 use crate::println;
-pub fn buffer_position(pid: usize) -> (usize, usize) { // [bottom, top)
+pub fn buffer_position(pid: usize) -> (usize, usize) {
+    // [bottom, top)
     let bottom = FRAME_END + pid * PAGE_SIZE;
     let top = bottom + PAGE_SIZE;
     (bottom, top)
@@ -15,7 +16,6 @@ pub fn write_to_buffer(data: &[usize], pid: usize) {
         buffer[i] = byte;
     }
 }
-
 pub fn read_from_buffer<const N: usize>(pid: usize) -> [usize; N] {
     let buffer = get_shared_buffer(pid, N);
     let mut array = [0; N];

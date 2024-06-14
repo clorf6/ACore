@@ -1,21 +1,33 @@
+use alloc::sync::{Weak, Arc};
 use alloc::vec::Vec;
+use spin::Mutex;
 use super::{Pid, alloc_pid};
 
 pub struct Process {
     pub pid: Pid,
-    pub parent: Option<Pid>,
-    pub children: Vec<Pid>,
+    inner: Mutex<ProcessInner>,
+}
+
+pub struct ProcessInner {
+    pub parent: Option<Weak<Process>>,
+    pub children: Vec<Arc<Process>>,
     pub exit_code: isize,
 }
 
 impl Process {
-    pub fn new() -> Self {
-        let pid = Pid(0);
+    pub fn lock(&self) -> spin::MutexGuard<ProcessInner> {
+        self.inner.lock()
+    }
+    pub fn new(pid: Pid) -> Self {
         Self {
             pid,
-            parent: None,
-            children: Vec::new(),
-            exit_code: 0,
+            inner: unsafe {
+                Mutex::new(ProcessInner {
+                    parent: None,
+                    children: Vec::new(),
+                    exit_code: 0,
+                })
+            },
         }
     }
 }

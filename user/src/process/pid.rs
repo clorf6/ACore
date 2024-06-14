@@ -19,7 +19,7 @@ pub struct PidAllocator {
 impl PidAllocator {
     pub fn new() -> Self {
         Self {
-            cur: 1,
+            cur: 2,
             recycled: Vec::new(),
         }
     }

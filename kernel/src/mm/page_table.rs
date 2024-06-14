@@ -1,10 +1,12 @@
-use super::address::{ PhysPageNum, VirtPageNum, VirtAddr, PPN_WIDTH };
+use super::address::{ PhysPageNum, VirtPageNum, VirtAddr, PhysAddr, PPN_WIDTH };
 use super::frame_allocator::*;
 use super::range::Step;
+use alloc::string::String;
 use alloc::collections::BTreeMap;
 use bitflags::*;
 use alloc::vec::Vec;
 use crate::println;
+use crate::task::get_cur_task;
 
 bitflags! {
     pub struct PTEFlags: u8 {
@@ -151,6 +153,15 @@ impl PageTable {
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
         self.find_pte(vpn).0.map(|pte| *pte)
     }
+
+    pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
+        self.find_pte(va.clone().floor()).0.map(|pte| {
+            let pa_based: PhysAddr = pte.ppn().into();
+            let offset = va.page_offset();
+            let ppn: usize = pa_based.into();
+            (ppn + offset).into()
+        })
+    }
     pub fn token(&self) -> usize {
         (8usize << 60) | self.root_ppn.0
     }
@@ -160,7 +171,7 @@ pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&
     let page_table = PageTable::from_token(token);
     let mut start = ptr as usize;
     let end = start + len;
-    let mut v = Vec::new();
+    let mut ret = Vec::new();
     while start < end {
         let start_va = VirtAddr::from(start);
         let mut vpn = start_va.floor();
@@ -169,13 +180,27 @@ pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&
         let mut end_va: VirtAddr = vpn.into();
         end_va = end_va.min(VirtAddr::from(end));
         if end_va.page_offset() == 0 {
-            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..]);
+            ret.push(&mut ppn.get_bytes_array()[start_va.page_offset()..]);
         } else {
-            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..end_va.page_offset()]);
+            ret.push(&mut ppn.get_bytes_array()[start_va.page_offset()..end_va.page_offset()]);
         }
         start = end_va.into();
     }
-    v
+    ret
 }
 
-
+pub fn translated_string(token: usize, ptr: *const u8) -> String {
+    let page_table = PageTable::from_token(token);
+    let mut ret = String::new();
+    let mut va = ptr as usize;
+    loop {
+        let ch: u8 = *(page_table.translate_va(VirtAddr::from(va)).unwrap().get_mut());
+        if ch == 0 {
+            break;
+        } else {
+            ret.push(ch as char);
+            va += 1;
+        }
+    }
+    ret
+}

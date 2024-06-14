@@ -47,11 +47,11 @@ pub fn trap_handler() {
         | Trap::Exception(Exception::LoadFault)
         | Trap::Exception(Exception::LoadPageFault) => {
             println!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, get_cur_task().trap_ctx().sepc);
-            exit_and_yield(0);
+            exit_and_yield();
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, kernel killed it.");
-            exit_and_yield(0);
+            exit_and_yield();
         }
         Trap::Interrupt(Interrupt::SupervisorSoft) => {
             unsafe { asm!{"csrc sip, 2"}; }
