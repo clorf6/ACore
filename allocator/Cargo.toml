@@ -4,4 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-spin = "0.9.8"
+sync = { path = "../sync" }
+log = "0.4"
