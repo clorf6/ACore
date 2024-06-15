@@ -15,9 +15,10 @@ pub const BUFFER: usize = TRAP_CONTEXT - PAGE_SIZE;
 pub const MMIO: &[(usize, usize)] = &[
     (0x10000000, 0x9000), 
     (0x100000, 0x2000),
+    (0x2000000, 0x2010000),
 ];
 
-pub const TIME_PERIOD: usize = 100000;
+pub const TIME_PERIOD: usize = 1000000;
 pub const MTIME_ADDR: usize = 0x0200bff8;
 pub const MTIMECMP_ADDR: usize = 0x02004000;
 pub const CPU_NUMBER: usize = 8;

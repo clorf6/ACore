@@ -1,5 +1,5 @@
 use super::Task;
-use spin::Mutex;
+use sync::UPSafeCell;
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use core::sync::atomic::AtomicUsize;
@@ -36,7 +36,7 @@ impl TaskManager {
     }
 
     pub fn get_front(&mut self) -> Option<Arc<Task>> {
-        match self.server.load(core::sync::atomic::Ordering::SeqCst) {
+        match self.server() {
             0 => self.ready_tasks.pop_front(),
             1 => Option::from(MANAGERTASK.clone()),
             _ => None,
@@ -49,7 +49,7 @@ impl TaskManager {
 }
 
 lazy_static! {
-    pub static ref TASK_MANAGER: Mutex<TaskManager> = Mutex::new(TaskManager::new());
+    pub static ref TASK_MANAGER: UPSafeCell<TaskManager> = UPSafeCell::new(TaskManager::new());
 }
 
 pub fn set_server(server: usize) {

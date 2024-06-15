@@ -1,12 +1,12 @@
-use super::address::{ PhysPageNum, VirtPageNum, VirtAddr, PhysAddr, PPN_WIDTH };
+use alloc::string::String;
+use alloc::vec::Vec;
+use alloc::vec;
+
+use bitflags::*;
+
+use super::address::{PhysAddr, PhysPageNum, PPN_WIDTH, VirtAddr, VirtPageNum};
 use super::frame_allocator::*;
 use super::range::Step;
-use alloc::string::String;
-use alloc::collections::BTreeMap;
-use bitflags::*;
-use alloc::vec::Vec;
-use crate::println;
-use crate::task::get_cur_task;
 
 bitflags! {
     pub struct PTEFlags: u8 {
@@ -61,101 +61,78 @@ impl PageTableEntry {
 
 pub struct PageTable {
     root_ppn: PhysPageNum,
-    dir_frames: BTreeMap<PhysPageNum, FrameTracker>,
+    dir_frames: Vec<FrameTracker>,
 }
 
 impl PageTable {
     pub fn new() -> Self {
         let mut frame = frame_alloc().unwrap();
         let ppn = frame.ppn;
-        frame.fa = ppn;
-        let mut frames = BTreeMap::new();
-        frames.insert(frame.ppn, frame);
         PageTable {
             root_ppn: ppn,
-            dir_frames: frames,
+            dir_frames: vec![frame],
         }
     }
-    fn create_pte(&mut self, vpn: VirtPageNum) -> (&mut PageTableEntry, PhysPageNum) {
+    pub fn clear(&mut self) {
+        self.dir_frames.clear();
+    }
+    fn create_pte(&mut self, vpn: VirtPageNum) -> &mut PageTableEntry {
         let idxs = vpn.indexes();
         let mut ppn = self.root_ppn;
         for (i, idx) in idxs.iter().enumerate() {
             let pte = &mut ppn.get_pte_array()[*idx];
             if i == 2 {
-                return (pte, ppn);
+                return pte;
             }
             if !pte.is_valid() {
                 let frame = frame_alloc().unwrap();
                 *pte = PageTableEntry::new(frame.ppn, PTEFlags::V);
-                self.dir_frames.insert(frame.ppn, frame);
-                // if let Some(frame) = self.dir_frames.get_mut(&ppn) {
-                //     frame.used += 1;
-                //     //println!("used+ {}, {}", frame.ppn.0, frame.used);
-                // }
+                self.dir_frames.push(frame);
             }
             ppn = pte.ppn();
         }
         unreachable!();
     }
-    fn find_pte(&self, vpn: VirtPageNum) -> (Option<&mut PageTableEntry>, PhysPageNum) {
+    fn find_pte(&self, vpn: VirtPageNum) -> Option<&mut PageTableEntry> {
         let idxs = vpn.indexes();
         let mut ppn = self.root_ppn;
-        let mut result: (Option<&mut PageTableEntry>, PhysPageNum) = (None, ppn);
+        let mut result: Option<&mut PageTableEntry> = None;
         for (i, idx) in idxs.iter().enumerate() {
             let pte = &mut ppn.get_pte_array()[*idx];
             if i == 2 {
-                result = (Some(pte), ppn);
+                result = Some(pte);
                 break;
             }
             if !pte.is_valid() {
-                return (None, ppn);
+                return None;
             }
             ppn = pte.ppn();
         }
         result
     }
     pub fn map(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: PTEFlags) {
-        let (pte, last) = self.create_pte(vpn);
+        let pte = self.create_pte(vpn);
         assert!(!pte.is_valid(), "vpn {:?} is mapped before mapping", vpn);
         *pte = PageTableEntry::new(ppn, flags | PTEFlags::V);
-        // if let Some(frame) = self.dir_frames.get_mut(&last) {
-        //     frame.used += 1;
-        //     //println!("used+ {}, {}", frame.ppn.0, frame.used);
-        // }
     }
     pub fn unmap(&mut self, vpn: VirtPageNum) {
         let res = self.find_pte(vpn);
-        let pte = res.0.unwrap();
-        let mut last = res.1;
+        let pte = res.unwrap();
         assert!(pte.is_valid(), "vpn {:?} is invalid before unmapping", vpn);
         *pte = PageTableEntry::empty();
-        // let mut frame = self.dir_frames.get_mut(&last).unwrap();
-        // let mut ppn = frame.ppn;
-        // last = frame.fa;
-        // frame.used -= 1;
-        // //println!("used- {}, {}", frame.ppn.0, frame.used);
-        // while frame.used == 0 && frame.ppn != frame.fa {
-        //     self.dir_frames.remove(&ppn);
-        //     frame = self.dir_frames.get_mut(&last).unwrap();
-        //     ppn = frame.ppn;
-        //     last = frame.fa;
-        //     frame.used -= 1;
-        //     //println!("used- {}, {}", frame.ppn.0, frame.used);
-        // }
     }
-    #[allow(unused)]
     pub fn from_token(satp: usize) -> Self {
         Self {
             root_ppn: PhysPageNum::from(satp & ((1usize << PPN_WIDTH) - 1)),
-            dir_frames: BTreeMap::new(),
+            dir_frames: Vec::new(),
         }
     }
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
-        self.find_pte(vpn).0.map(|pte| *pte)
+        self.find_pte(vpn).map(|pte| *pte)
     }
 
     pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
-        self.find_pte(va.clone().floor()).0.map(|pte| {
+        self.find_pte(va.clone().floor()).map(|pte| {
             let pa_based: PhysAddr = pte.ppn().into();
             let offset = va.page_offset();
             let ppn: usize = pa_based.into();

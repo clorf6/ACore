@@ -1,12 +1,12 @@
 use alloc::sync::{Weak, Arc};
 use alloc::vec::Vec;
-use spin::Mutex;
+use core::cell::RefMut;
+use sync::UPSafeCell;
 use super::{Pid, alloc_pid};
 
 pub struct Process {
     pub pid: Pid,
-
-    inner: Mutex<ProcessInner>,
+    inner: UPSafeCell<ProcessInner>,
 }
 
 pub struct ProcessInner {
@@ -17,14 +17,14 @@ pub struct ProcessInner {
 }
 
 impl Process {
-    pub fn lock(&self) -> spin::MutexGuard<ProcessInner> {
+    pub fn lock(&self) -> RefMut<'_, ProcessInner> {
         self.inner.lock()
     }
     pub fn new(pid: Pid) -> Self {
         Self {
             pid,
             inner: unsafe {
-                Mutex::new(ProcessInner {
+                UPSafeCell::new(ProcessInner {
                     done: false,
                     parent: None,
                     children: Vec::new(),

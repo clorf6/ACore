@@ -7,12 +7,11 @@ use bitflags::*;
 use lazy_static::*;
 use riscv::register::satp;
 use sync::UPSafeCell;
-
 use crate::config::*;
 use crate::println;
 use log::{debug, info};
 use super::address::{PhysAddr, PhysPageNum, VirtAddr, VirtPageNum};
-use super::buffer_position;
+use super::{buffer_position, heap_allocator};
 use super::frame_allocator::{frame_alloc, FrameTracker};
 use super::page_table::{PageTable, PageTableEntry, PTEFlags};
 use super::range::{Range, Step};
@@ -132,6 +131,12 @@ impl MapArea {
     }
 }
 
+impl Drop for MapArea {
+    fn drop(&mut self) {
+        self.data_frames.clear();
+    }
+}
+
 extern "C" {
     fn stext();
     fn etext();
@@ -166,6 +171,7 @@ impl MemorySet {
     }
     pub fn clean(&mut self) {
         self.areas.clear();
+        self.page_table.clear();
     }
     fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
         map_area.map(&mut self.page_table);
@@ -192,12 +198,7 @@ impl MemorySet {
         );
     }
     pub fn unmap(&mut self, start_vpn: VirtPageNum) {
-        if let Some((idx, area)) = self
-            .areas
-            .iter_mut()
-            .enumerate()
-            .find(|(_, area)| area.vpn_range.l == start_vpn)
-        {
+        if let Some((idx, area)) = self.areas.iter_mut().enumerate().find(|(_, area)| area.vpn_range.l == start_vpn) {
             area.unmap(&mut self.page_table);
             self.areas.remove(idx);
         }
@@ -443,7 +444,7 @@ impl MemorySet {
 
 #[allow(unused)]
 pub fn remap_test() {
-    let mut kernel_space = KERNEL_SPACE.get();
+    let mut kernel_space = KERNEL_SPACE.lock();
     let mid_text: VirtAddr = ((stext as usize + etext as usize) / 2).into();
     let mid_rodata: VirtAddr = ((srodata as usize + erodata as usize) / 2).into();
     let mid_data: VirtAddr = ((sdata as usize + edata as usize) / 2).into();

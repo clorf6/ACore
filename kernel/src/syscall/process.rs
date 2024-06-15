@@ -8,21 +8,8 @@ use crate::console::shutdown;
 use crate::time::get_time;
 
 pub fn sys_exit(exit_code: isize) -> ! {
-    let pid = get_cur_task().pid;
-    if pid == 0 {
-        println!(
-            "[kernel] INITPROC exit with exit_code {} ...",
-            exit_code
-        );
-        if exit_code != 0 {
-            shutdown(true)
-        } else {
-            shutdown(false)
-        }
-    }
-    write_to_buffer(&[SYSCALL_EXIT, pid, exit_code as usize], 1);
     set_server(1);
-    exit_and_yield();
+    exit_and_yield(exit_code);
     unreachable!("Unreachable in sys_exit");
 }
 
@@ -44,14 +31,14 @@ pub fn sys_fork() -> isize {
     suspend_and_yield();
     let [new_pid] = read_from_buffer(1); // child pid
     let new_task = get_cur_task().fork(new_pid);
-    let trap_ctx = new_task.trap_ctx();
+    let trap_ctx = new_task.lock().trap_ctx();
     trap_ctx.x[10] = 0;
     push_back(new_task);
     new_pid as isize
 }
 
 pub fn sys_exec(path: *const u8) -> isize {
-    let token = get_cur_task().user_token();
+    let token = user_token();
     let path = translated_string(token, path);
     if let Some(data) = get_app_data_by_name(path.as_str()) {
         get_cur_task().exec(data);
@@ -61,17 +48,17 @@ pub fn sys_exec(path: *const u8) -> isize {
     }
 }
 
-pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut isize) -> isize {
+pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
     let task = get_cur_task();
     let cur_pid = task.pid;
-    let token = task.user_token();
+    let token = user_token();
     push_front(task);
     write_to_buffer(&[SYSCALL_WAITPID, cur_pid, pid as usize], 1);
     set_server(1);
     suspend_and_yield();
     let [exist, child_pid, exit_code]: [usize; 3] = read_from_buffer(1);
     let child_pid: isize = child_pid as isize;
-    let exit_code: isize = exit_code as isize;
+    let exit_code: i32 = exit_code as i32;
     if exist == 0 {
         -1
     } else {
@@ -85,5 +72,5 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut isize) -> isize {
 }
 
 pub fn sys_get_time() -> isize {
-    get_time() as isize
+    (get_time() / 1000) as isize
 }

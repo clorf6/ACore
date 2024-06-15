@@ -14,5 +14,7 @@ pub use buffer::{buffer_position, buffer_test};
 pub fn init() {
     heap_allocator::init_heap();
     frame_allocator::init_frame_allocator();
-    KERNEL_SPACE.get().activate();
+    KERNEL_SPACE.lock().activate();
+    //heap_allocator::heap_test();
+    // memory_area::remap_test();
 }

@@ -1,9 +1,10 @@
 use crate::mm::{PhysPageNum, VirtAddr, MemorySet, KERNEL_SPACE};
-use spin::{Mutex, MutexGuard};
 use alloc::sync::{Arc, Weak};
+use core::cell::RefMut;
 use crate::config::{TRAP_CONTEXT, PAGE_SIZE};
 use crate::trap::{TrapContext, trap_return, trap_handler};
 use super::{KernelStack};
+use sync::UPSafeCell;
 use crate::println;
 
 #[derive(Eq, PartialEq)]
@@ -40,19 +41,36 @@ impl TaskContext {
 
 pub struct Task {
     pub pid: usize,
-    pub inner: Mutex<TaskInner>,
+    pub inner: UPSafeCell<TaskInner>,
 }
 
 pub struct TaskInner {
-    pub kernel_stack: KernelStack,
     pub trap_ctx: PhysPageNum,
     pub task_ctx: TaskContext,
     pub task_status: TaskStatus,
     pub memory: MemorySet,
+    pub kernel_stack: KernelStack,
+}
+
+impl TaskInner {
+    pub fn trap_ctx(&self) -> &'static mut TrapContext {
+        self.trap_ctx.get_mut()
+    }
+
+    pub fn user_token(&self) -> usize {
+        self.memory.token()
+    }
+}
+
+impl Drop for TaskInner {
+    fn drop(&mut self) {
+        self.task_status = TaskStatus::Zombie;
+        self.memory.clean();
+    }
 }
 
 impl Task {
-    pub fn lock(&self) -> MutexGuard<TaskInner> {
+    pub fn lock(&self) -> RefMut<'_, TaskInner> {
         self.inner.lock()
     }
 
@@ -68,19 +86,20 @@ impl Task {
         *trap_ctx = TrapContext::app_init_context(
             user_sepc,
             user_sp,
-            KERNEL_SPACE.get().token(),
+            KERNEL_SPACE.lock().token(),
             kernel_stack_top,
             trap_handler as usize,
         );
         memory_set.map_buffer(pid);
         Self {
             pid,
-            inner: Mutex::new(TaskInner {
-                    kernel_stack,
+
+            inner: UPSafeCell::new(TaskInner {
                     trap_ctx: trap_ctx_ppn,
                     task_ctx: TaskContext::new(trap_return as usize, kernel_stack_top),
                     task_status: TaskStatus::Ready,
                     memory: memory_set,
+                    kernel_stack,
                 }),
         }
     }
@@ -88,6 +107,7 @@ impl Task {
     pub fn fork(self: &Arc<Self>, pid: usize) -> Arc<Self> {
         let mut parent_inner = self.inner.lock();
         let mut memory_set = MemorySet::from_user(&parent_inner.memory);
+        drop(parent_inner);
         let trap_ctx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap()
@@ -100,12 +120,12 @@ impl Task {
         Arc::new( Self {
             pid,
             inner: unsafe {
-                Mutex::new(TaskInner {
-                    kernel_stack,
+                UPSafeCell::new(TaskInner {
                     trap_ctx: trap_ctx_ppn,
                     task_ctx: TaskContext::new(trap_return as usize, kernel_stack_top),
                     task_status: TaskStatus::Ready,
                     memory: memory_set,
+                    kernel_stack,
                 })
             },
         })
@@ -118,27 +138,18 @@ impl Task {
             .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap()
             .ppn();
-        self.inner.lock().memory = memory_set;
-        self.inner.lock().trap_ctx = trap_ctx_ppn;
+        let mut inner = self.lock();
+        inner.memory = memory_set;
+        inner.trap_ctx = trap_ctx_ppn;
+        let top = inner.kernel_stack.top();
+        drop(inner);
         let trap_ctx = trap_ctx_ppn.get_mut();
         *trap_ctx = TrapContext::app_init_context(
             user_sepc,
             user_sp,
-            KERNEL_SPACE.get().token(),
-            self.inner.lock().kernel_stack.top(),
+            KERNEL_SPACE.lock().token(),
+            top,
             trap_handler as usize,
         );
-    }
-
-    pub fn task_ctx_ptr(&self) -> *const TaskContext {
-        &self.inner.lock().task_ctx
-    }
-
-    pub fn trap_ctx(&self) -> &'static mut TrapContext {
-        self.inner.lock().trap_ctx.get_mut()
-    }
-
-    pub fn user_token(&self) -> usize {
-        self.inner.lock().memory.token()
     }
 }

@@ -1,8 +1,8 @@
 mod context;
 
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
-use crate::syscall::syscall;
-use crate::task::{exit_and_yield, get_cur_task, suspend_and_yield};
+use crate::syscall::{syscall, sys_exit};
+use crate::task::{trap_ctx, exit_and_yield, user_token, suspend_and_yield, get_server};
 use core::arch::{asm, global_asm};
 use riscv::register::{
     mtvec::TrapMode,
@@ -36,27 +36,29 @@ pub fn trap_handler() {
     let stval = stval::read();
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
-            let mut ctx = get_cur_task().trap_ctx();
+            let mut ctx = trap_ctx();
             ctx.sepc += 4;
             //println!("syscall id = {}, pid {}", ctx.x[17], get_cur_task().pid);
             let result = syscall(ctx.x[17], [ctx.x[10], ctx.x[11], ctx.x[12]]) as usize;
-            ctx = get_cur_task().trap_ctx();
+            ctx = trap_ctx();
             ctx.x[10] = result;
         }
         Trap::Exception(Exception::StoreFault)
         | Trap::Exception(Exception::StorePageFault)
         | Trap::Exception(Exception::LoadFault)
         | Trap::Exception(Exception::LoadPageFault) => {
-            println!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, get_cur_task().trap_ctx().sepc);
-            exit_and_yield();
+            println!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, trap_ctx().sepc);
+            sys_exit(-2);
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, kernel killed it.");
-            exit_and_yield();
+            sys_exit(-3);
         }
         Trap::Interrupt(Interrupt::SupervisorSoft) => {
             unsafe { asm!{"csrc sip, 2"}; }
-            suspend_and_yield();
+            if get_server() == 0 {
+                suspend_and_yield();
+            }
         }
         _ => {
             panic!(
@@ -77,7 +79,7 @@ pub fn trap_return() {
     }
     set_user_trap_entry();
     let trap_cx_ptr = TRAP_CONTEXT;
-    let user_satp = get_cur_task().user_token();
+    let user_satp = user_token();
     let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
     unsafe {
         asm!(
@@ -94,7 +96,7 @@ pub fn trap_return() {
 
 #[no_mangle]
 pub fn trap_from_kernel() -> ! {
-    panic!("a trap {:?} from kernel!", scause::read().cause());
+    panic!("a trap {:?} from kernel, bad addr = {:#x}", scause::read().cause(), stval::read());
 }
 
 pub use context::TrapContext;

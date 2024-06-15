@@ -14,7 +14,7 @@ pub struct KernelStack {
 impl KernelStack {
     pub fn new(pid: usize) -> Self {
         let (bottom, top) = kernel_stack_position(pid);
-        KERNEL_SPACE.get().map(
+        KERNEL_SPACE.lock().map(
             bottom.into(),
             top.into(),
             MapPermission::R | MapPermission::W,
@@ -37,6 +37,6 @@ impl Drop for KernelStack {
     fn drop(&mut self) {
         let (bottom, top) = kernel_stack_position(self.pid);
         let bottom: VirtAddr = bottom.into();
-        KERNEL_SPACE.get().unmap(bottom.into());
+        KERNEL_SPACE.lock().unmap(bottom.into());
     }
 }

@@ -6,7 +6,7 @@ extern crate user;
 extern crate alloc;
 
 use alloc::sync::Arc;
-use user::{alloc_pid, find_process, fork, INITPROC, insert_process, Process, remove_process, SYSCALL_EXIT, SYSCALL_FORK, SYSCALL_WAITPID, write_to_buffer, yield_};
+use user::{process_num, alloc_pid, find_process, fork, INITPROC, insert_process, Process, remove_process, SYSCALL_EXIT, SYSCALL_FORK, SYSCALL_WAITPID, write_to_buffer, yield_};
 
 #[no_mangle]
 pub fn main() -> i32 {
@@ -15,20 +15,27 @@ pub fn main() -> i32 {
         if data[0] == SYSCALL_FORK {
             let parent = find_process(data[1]).expect("[User] process in fork not found");
             let child = Arc::new(Process::new(alloc_pid()));
-            child.lock().parent = Some(Arc::downgrade(&parent));
-            parent.lock().children.push(child.clone());
             let child_pid = child.pid.0;
-            insert_process(child.clone());
+            let mut child_lock = child.lock();
+            child_lock.parent = Some(Arc::downgrade(&parent));
+            drop(child_lock);
+            let child_2 = child.clone();
+            insert_process(child);
+            let mut parent_lock = parent.lock();
+            parent_lock.children.push(child_2);
+            drop(parent_lock);
             write_to_buffer(&[child_pid]);
         } else if data[0] == SYSCALL_EXIT {
             let proc = find_process(data[1]).expect("[User] process in exit not found");
-            proc.lock().exit_code = data[2] as isize;
-            proc.lock().done = true;
-            for child in proc.lock().children.iter() {
+            let mut proc = proc.lock();
+            proc.exit_code = data[2] as isize;
+            proc.done = true;
+            for child in proc.children.iter() {
                 child.lock().parent = Some(Arc::downgrade(&INITPROC));
                 INITPROC.lock().children.push(child.clone());
             }
-            proc.lock().children.clear();
+            proc.children.clear();
+            drop(proc);
             remove_process(data[1]);
         } else if data[0] == SYSCALL_WAITPID {
             let proc = find_process(data[1]).expect("[User] process in waitpid not found");
@@ -47,10 +54,12 @@ pub fn main() -> i32 {
                     assert_eq!(Arc::strong_count(&child), 1);
                     child_pid = child.pid.0 as isize;
                     write_to_buffer(&[1, child_pid as usize, exit_code as usize]);
+                    drop(child);
                 } else {
                     write_to_buffer(&[1, child_pid as usize, 0]);
                 }
             }
+            drop(proc);
         }
         yield_();
     }

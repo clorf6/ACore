@@ -1,17 +1,29 @@
 use allocator::buddy_allocator::BuddyAllocator;
+use buddy_system_allocator::LockedHeap;
 use crate::println;
 use crate::config::{KERNEL_HEAP_SIZE, PAGE_SIZE};
 
-#[global_allocator]
-static HEAP_ALLOCATOR: BuddyAllocator = BuddyAllocator::new(PAGE_SIZE);
+const alloc_minimum: usize = PAGE_SIZE;
 
+const fn get_alloc_num(total: usize, minimum: usize) -> usize {
+    (total << 1) / minimum
+}
+
+const alloc_num: usize = get_alloc_num(KERNEL_HEAP_SIZE, alloc_minimum);
 static mut KERNEL_HEAP_SPACE: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
 
+#[global_allocator]
+//static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
+static HEAP_ALLOCATOR: BuddyAllocator<alloc_num, alloc_minimum> = BuddyAllocator::new();
+
+pub fn used() -> usize {
+    HEAP_ALLOCATOR.used()
+}
 pub fn init_heap() {
     unsafe {
         let begin = KERNEL_HEAP_SPACE.as_ptr() as usize;
-        let end = begin + KERNEL_HEAP_SIZE;
-        HEAP_ALLOCATOR.add(begin, end);
+        HEAP_ALLOCATOR.init(begin);
+        //HEAP_ALLOCATOR.lock().init(begin, KERNEL_HEAP_SIZE);
     }
 }
 
@@ -34,6 +46,7 @@ pub fn heap_test() {
     assert!(bss_range.contains(&(a.as_ref() as *const _ as usize)));
     drop(a);
     let mut v: Vec<usize> = Vec::new();
+    println!("used {}", used());
     for i in 0..260000 {
         v.push(i);
     }
@@ -49,5 +62,6 @@ pub fn heap_test() {
     }
     assert!(bss_range.contains(&(v.as_ptr() as usize)));
     drop(v);
+    println!("used {}", used());
     println!("heap_test passed!");
 }

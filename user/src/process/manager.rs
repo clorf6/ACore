@@ -1,6 +1,6 @@
 use super::Process;
 use super::Pid;
-use spin::Mutex;
+use sync::UPSafeCell;
 use alloc::sync::{Weak, Arc};
 use alloc::collections::BTreeMap;
 use lazy_static::*;
@@ -32,14 +32,14 @@ impl ProcessManager {
 }
 
 lazy_static!{
-    pub static ref PROCESS_MANAGER: Mutex<ProcessManager> = Mutex::new(ProcessManager::new());
+    pub static ref PROCESS_MANAGER: UPSafeCell<ProcessManager> = UPSafeCell::new(ProcessManager::new());
 }
 
 pub fn insert_process(process: Arc<Process>) {
     PROCESS_MANAGER.lock().insert(process);
 }
 
-pub fn remove_process(pid: usize) {
+pub fn remove_process(pid: usize){
     PROCESS_MANAGER.lock().remove(pid);
 }
 
