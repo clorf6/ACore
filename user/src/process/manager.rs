@@ -1,7 +1,7 @@
 use super::Process;
 use super::Pid;
 use sync::UPSafeCell;
-use alloc::sync::{Weak, Arc};
+use alloc::sync::Arc;
 use alloc::collections::BTreeMap;
 use lazy_static::*;
 

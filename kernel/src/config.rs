@@ -4,7 +4,7 @@ pub const KERNEL_STACK_SIZE: usize = 4096 * 2;
 pub const KERNEL_HEAP_SIZE: usize = 0x800000;
 pub const MEMORY_END: usize = 0x88000000;
 pub const BUFFER_SIZE: usize = 0x100000;
-pub const FRAME_END: usize = 0x87900000;
+pub const FRAME_END: usize = MEMORY_END - BUFFER_SIZE;
 pub const PAGE_SIZE: usize = 0x1000;
 pub const PAGE_SIZE_BITS: usize = 12;
 

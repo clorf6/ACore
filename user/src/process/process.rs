@@ -2,7 +2,7 @@ use alloc::sync::{Weak, Arc};
 use alloc::vec::Vec;
 use core::cell::RefMut;
 use sync::UPSafeCell;
-use super::{Pid, alloc_pid};
+use super::Pid;
 
 pub struct Process {
     pub pid: Pid,
@@ -23,14 +23,12 @@ impl Process {
     pub fn new(pid: Pid) -> Self {
         Self {
             pid,
-            inner: unsafe {
-                UPSafeCell::new(ProcessInner {
+            inner: UPSafeCell::new(ProcessInner {
                     done: false,
                     parent: None,
                     children: Vec::new(),
                     exit_code: 0,
-                })
-            },
+                }),
         }
     }
 }

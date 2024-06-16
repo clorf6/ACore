@@ -1,4 +1,5 @@
 use core::panic::PanicInfo;
+use crate::exit;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
@@ -12,5 +13,5 @@ fn panic(info: &PanicInfo) -> ! {
     } else {
         println!("[kernel] Panicked: {}", info.message().unwrap());
     }
-    loop {}
+    exit(-1)
 }

@@ -2,14 +2,14 @@ use alloc::sync::Arc;
 
 use lazy_static::lazy_static;
 use sync::UPSafeCell;
-use crate::trap::TrapContext;
+
 use crate::console::shutdown;
-use crate::syscall::SYSCALL_EXIT;
 use crate::mm::buffer::write_to_buffer;
 use crate::println;
-use crate::task::manager::get_server;
+use crate::syscall::SYSCALL_EXIT;
+use crate::trap::TrapContext;
 
-use super::{__switch, get_front_task, KernelStack, push_back, set_server, Task, task_num, TaskContext, TaskStatus};
+use super::{__switch, get_front_task, push_back, Task, TaskContext, TaskStatus};
 
 pub struct Processor {
     cur: Option<Arc<Task>>,
@@ -87,7 +87,7 @@ pub fn schedule(add: bool, exit_code: isize) {
     //println!("schedule task {} server {} num {}", task.pid, get_server(), task_num());
     if add { 
         inner.task_status = TaskStatus::Ready;
-        let mut task_ctx_ptr = &mut inner.task_ctx as *mut TaskContext;
+        let task_ctx_ptr = &mut inner.task_ctx as *mut TaskContext;
         drop(inner);
         push_back(task);
         let mut processor = PROCESSOR.lock();

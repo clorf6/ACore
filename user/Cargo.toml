@@ -8,7 +8,7 @@ allocator = { path = "../allocator" }
 sync = { path = "../sync" }
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 spin = "0.9.8"
-buddy_system_allocator = "0.6"
+# buddy_system_allocator = "0.6"
 
 [profile.release]
 debug = true

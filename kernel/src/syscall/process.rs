@@ -1,10 +1,8 @@
 use crate::loader::get_app_data_by_name;
 use crate::mm::buffer::{read_from_buffer, write_to_buffer};
 use crate::mm::page_table::{translated_refmut, translated_string};
-use crate::syscall::{SYSCALL_EXIT, SYSCALL_FORK, SYSCALL_WAITPID};
+use crate::syscall::{SYSCALL_FORK, SYSCALL_WAITPID};
 use crate::task::*;
-use crate::println;
-use crate::console::shutdown;
 use crate::time::get_time;
 
 pub fn sys_exit(exit_code: isize) -> ! {

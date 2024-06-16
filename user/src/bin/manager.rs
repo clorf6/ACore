@@ -1,12 +1,12 @@
 #![no_std]
 #![no_main]
 
-#[macro_use]
-extern crate user;
 extern crate alloc;
+extern crate user;
 
 use alloc::sync::Arc;
-use user::{process_num, alloc_pid, find_process, fork, INITPROC, insert_process, Process, remove_process, SYSCALL_EXIT, SYSCALL_FORK, SYSCALL_WAITPID, write_to_buffer, yield_};
+
+use user::{alloc_pid, find_process, INITPROC, insert_process, Process, remove_process, SYSCALL_EXIT, SYSCALL_FORK, SYSCALL_WAITPID, write_to_buffer, yield_};
 
 #[no_mangle]
 pub fn main() -> i32 {

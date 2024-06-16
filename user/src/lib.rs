@@ -8,26 +8,26 @@ pub mod process;
 mod exception;
 mod syscall;
 
-use allocator::buddy_allocator::BuddyAllocator;
+use allocator::BuddyAllocator;
 pub use syscall::*;
 pub use process::*;
-use buddy_system_allocator::LockedHeap;
+//use buddy_system_allocator::LockedHeap;
 
 extern crate alloc;
 const USER_HEAP_SIZE: usize = 16384;
-const alloc_minimum: usize = 128;
+const ALLOC_MINIMUM: usize = 256;
 
 const fn get_alloc_num(total: usize, minimum: usize) -> usize {
     2 * total / minimum
 }
 
-const alloc_num: usize = get_alloc_num(USER_HEAP_SIZE, alloc_minimum);
+const ALLOC_NUM: usize = get_alloc_num(USER_HEAP_SIZE, ALLOC_MINIMUM);
 
 static mut HEAP_SPACE: [u8; USER_HEAP_SIZE] = [0; USER_HEAP_SIZE];
 
 #[global_allocator]
 //static HEAP: LockedHeap = LockedHeap::empty();
-static HEAP: BuddyAllocator<alloc_minimum, alloc_num> = BuddyAllocator::new();
+static HEAP: BuddyAllocator<ALLOC_MINIMUM, ALLOC_NUM> = BuddyAllocator::new();
 
 #[no_mangle]
 #[link_section = ".text.entry"]

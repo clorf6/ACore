@@ -1,11 +1,14 @@
-use super::Task;
-use sync::UPSafeCell;
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use core::sync::atomic::AtomicUsize;
+
 use lazy_static::*;
+use sync::UPSafeCell;
+
 use crate::loader::get_app_data_by_name;
-use crate::println;
+
+use super::Task;
+
 pub struct TaskManager {
     ready_tasks: VecDeque<Arc<Task>>,
     server: AtomicUsize,

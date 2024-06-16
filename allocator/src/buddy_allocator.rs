@@ -1,30 +1,26 @@
 use alloc::alloc::Layout;
 use core::alloc::GlobalAlloc;
 use core::cell::RefMut;
-use core::cmp::{max, min};
-use core::mem::size_of;
-use core::ptr::null_mut;
+use core::cmp::max;
 use sync::UPSafeCell;
-use log::debug;
 
-
-pub struct BuddyAllocator<const num: usize, const minimum: usize> {
-    pub allocator: UPSafeCell<BuddyAllocatorInner<num, minimum>>,
+pub struct BuddyAllocator<const NUM: usize, const MINIMUM: usize> {
+    pub allocator: UPSafeCell<BuddyAllocatorInner<NUM, MINIMUM>>,
 }
 
-impl<const num: usize, const minimum: usize> BuddyAllocator<num, minimum> {
+impl<const NUM: usize, const MINIMUM: usize> BuddyAllocator<NUM, MINIMUM> {
     pub const fn new() -> Self {
         Self {
             allocator: UPSafeCell::new(BuddyAllocatorInner::new()),
         }
     }
 
-    pub fn lock(&self) -> RefMut<'_, BuddyAllocatorInner<num, minimum>> {
+    pub fn lock(&self) -> RefMut<'_, BuddyAllocatorInner<NUM, MINIMUM>> {
         self.allocator.lock()
     }
 
     pub unsafe fn init(&self, offset: usize) {
-        self.allocator.lock().init(offset);
+            self.allocator.lock().init(offset);
     }
 
     pub fn used(&self) -> usize {
@@ -32,7 +28,7 @@ impl<const num: usize, const minimum: usize> BuddyAllocator<num, minimum> {
     }
 }
 
-unsafe impl<const num: usize, const minimum: usize> GlobalAlloc for BuddyAllocator<num, minimum> {
+unsafe impl<const NUM: usize, const MINIMUM: usize> GlobalAlloc for BuddyAllocator<NUM, MINIMUM> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         self.lock().alloc(layout)
     }
@@ -42,29 +38,29 @@ unsafe impl<const num: usize, const minimum: usize> GlobalAlloc for BuddyAllocat
     }
 }
 
-pub struct BuddyAllocatorInner<const num: usize, const minimum: usize> {
+pub struct BuddyAllocatorInner<const NUM: usize, const MINIMUM: usize> {
     total: usize,
     offset: usize,
     pub used: usize,
-    block: [usize; num]
+    block: [usize; NUM]
 }
 
-impl<const num: usize, const minimum: usize> BuddyAllocatorInner<num, minimum> {
+impl<const NUM: usize, const MINIMUM: usize> BuddyAllocatorInner<NUM, MINIMUM> {
     pub const fn new() -> Self {
-        assert!(num.is_power_of_two());
-        assert!(minimum.is_power_of_two());
+        assert!(NUM.is_power_of_two());
+        assert!(MINIMUM.is_power_of_two());
         Self {
-            total: num * (minimum >> 1),
+            total: NUM * (MINIMUM >> 1),
             offset: 0,
             used: 0,
-            block: [0; num],
+            block: [0; NUM],
         }
     }
 
     pub fn init(&mut self, offset: usize) {
         self.offset = offset;
         let mut node_size = self.total << 1;
-        for i in 0..num - 1 {
+        for i in 0..NUM - 1 {
             if (i + 1).is_power_of_two() {
                 node_size >>= 1;
             }
@@ -74,7 +70,7 @@ impl<const num: usize, const minimum: usize> BuddyAllocatorInner<num, minimum> {
 
     fn calc_size(&self, layout: &Layout) -> usize {
         max(
-            max(layout.align(), minimum),
+            max(layout.align(), MINIMUM),
             layout.size().next_power_of_two(),
         )
     }
@@ -115,9 +111,9 @@ impl<const num: usize, const minimum: usize> BuddyAllocatorInner<num, minimum> {
         let size = self.calc_size(&layout);
         let addr = ptr as usize - self.offset;
         assert!(addr < self.total);
-        let mut node_size = minimum;
-        let mut idx = addr / minimum + (num >> 1) - 1;
-        assert!(idx < num);
+        let mut node_size = MINIMUM;
+        let mut idx = addr / MINIMUM + (NUM >> 1) - 1;
+        assert!(idx < NUM);
         while self.block[idx] != 0 {
             node_size <<= 1;
             if idx == 0 {
@@ -128,7 +124,7 @@ impl<const num: usize, const minimum: usize> BuddyAllocatorInner<num, minimum> {
                 panic!("[buddy allocator] Index out of bounds.");
             }
         }
-        if self.block[idx] != 0 {
+        if self.block[idx] != 0 || node_size < size {
             panic!("[buddy allocator] No used space")
         }
         self.used -= node_size;

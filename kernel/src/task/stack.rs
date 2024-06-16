@@ -1,6 +1,6 @@
 use crate::config::{KERNEL_STACK_SIZE, PAGE_SIZE, TRAMPOLINE};
-use crate::mm::{MapPermission, VirtAddr, KERNEL_SPACE};
-use crate::println;
+use crate::mm::{KERNEL_SPACE, MapPermission, VirtAddr};
+
 pub fn kernel_stack_position(app_id: usize) -> (usize, usize) {
     let top = TRAMPOLINE - app_id * (KERNEL_STACK_SIZE + PAGE_SIZE);
     let bottom = top - KERNEL_STACK_SIZE;
@@ -35,7 +35,7 @@ impl KernelStack {
 
 impl Drop for KernelStack {
     fn drop(&mut self) {
-        let (bottom, top) = kernel_stack_position(self.pid);
+        let (bottom, _) = kernel_stack_position(self.pid);
         let bottom: VirtAddr = bottom.into();
         KERNEL_SPACE.lock().unmap(bottom.into());
     }

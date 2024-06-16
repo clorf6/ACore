@@ -1,11 +1,13 @@
-use crate::mm::{PhysPageNum, VirtAddr, MemorySet, KERNEL_SPACE};
-use alloc::sync::{Arc, Weak};
+use alloc::sync::Arc;
 use core::cell::RefMut;
-use crate::config::{TRAP_CONTEXT, PAGE_SIZE};
-use crate::trap::{TrapContext, trap_return, trap_handler};
-use super::{KernelStack};
+
 use sync::UPSafeCell;
-use crate::println;
+
+use crate::config::TRAP_CONTEXT;
+use crate::mm::{KERNEL_SPACE, MemorySet, PhysPageNum, VirtAddr};
+use crate::trap::{trap_handler, trap_return, TrapContext};
+
+use super::KernelStack;
 
 #[derive(Eq, PartialEq)]
 pub enum TaskStatus {
@@ -41,6 +43,7 @@ impl TaskContext {
 
 pub struct Task {
     pub pid: usize,
+    pub kernel_stack: KernelStack,
     pub inner: UPSafeCell<TaskInner>,
 }
 
@@ -49,7 +52,6 @@ pub struct TaskInner {
     pub task_ctx: TaskContext,
     pub task_status: TaskStatus,
     pub memory: MemorySet,
-    pub kernel_stack: KernelStack,
 }
 
 impl TaskInner {
@@ -93,19 +95,18 @@ impl Task {
         memory_set.map_buffer(pid);
         Self {
             pid,
-
+            kernel_stack,
             inner: UPSafeCell::new(TaskInner {
                     trap_ctx: trap_ctx_ppn,
                     task_ctx: TaskContext::new(trap_return as usize, kernel_stack_top),
                     task_status: TaskStatus::Ready,
                     memory: memory_set,
-                    kernel_stack,
                 }),
         }
     }
 
     pub fn fork(self: &Arc<Self>, pid: usize) -> Arc<Self> {
-        let mut parent_inner = self.inner.lock();
+        let parent_inner = self.inner.lock();
         let mut memory_set = MemorySet::from_user(&parent_inner.memory);
         drop(parent_inner);
         let trap_ctx_ppn = memory_set
@@ -119,15 +120,13 @@ impl Task {
         memory_set.map_buffer(pid);
         Arc::new( Self {
             pid,
-            inner: unsafe {
-                UPSafeCell::new(TaskInner {
+            kernel_stack,
+            inner: UPSafeCell::new(TaskInner {
                     trap_ctx: trap_ctx_ppn,
                     task_ctx: TaskContext::new(trap_return as usize, kernel_stack_top),
                     task_status: TaskStatus::Ready,
                     memory: memory_set,
-                    kernel_stack,
-                })
-            },
+                }),
         })
     }
 
@@ -141,14 +140,13 @@ impl Task {
         let mut inner = self.lock();
         inner.memory = memory_set;
         inner.trap_ctx = trap_ctx_ppn;
-        let top = inner.kernel_stack.top();
         drop(inner);
         let trap_ctx = trap_ctx_ppn.get_mut();
         *trap_ctx = TrapContext::app_init_context(
             user_sepc,
             user_sp,
             KERNEL_SPACE.lock().token(),
-            top,
+            self.kernel_stack.top(),
             trap_handler as usize,
         );
     }

@@ -39,7 +39,7 @@ impl PidAllocator {
 }
 
 lazy_static! {
-    pub static ref PID_ALLOCATOR: UPSafeCell<PidAllocator> = unsafe { UPSafeCell::new(PidAllocator::new()) };
+    pub static ref PID_ALLOCATOR: UPSafeCell<PidAllocator> = UPSafeCell::new(PidAllocator::new());
 }
 
 pub fn alloc_pid() -> Pid {

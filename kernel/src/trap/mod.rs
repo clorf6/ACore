@@ -1,15 +1,19 @@
-mod context;
-
-use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
-use crate::syscall::{syscall, sys_exit};
-use crate::task::{trap_ctx, exit_and_yield, user_token, suspend_and_yield, get_server};
 use core::arch::{asm, global_asm};
+
 use riscv::register::{
     mtvec::TrapMode,
-    scause::{self, Exception, Trap, Interrupt},
+    scause::{self, Exception, Interrupt, Trap},
     stval, stvec
 };
+
+pub use context::TrapContext;
+
+use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::println;
+use crate::syscall::{sys_exit, syscall};
+use crate::task::{get_server, suspend_and_yield, trap_ctx, user_token};
+
+mod context;
 
 global_asm!(include_str!("trampoline.S"));
 
@@ -99,4 +103,3 @@ pub fn trap_from_kernel() -> ! {
     panic!("a trap {:?} from kernel, bad addr = {:#x}", scause::read().cause(), stval::read());
 }
 
-pub use context::TrapContext;

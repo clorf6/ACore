@@ -1,11 +1,10 @@
 use alloc::vec::Vec;
 
 use lazy_static::*;
+use log::info;
 use sync::UPSafeCell;
 
 use crate::config::FRAME_END;
-use crate::println;
-use log::info;
 
 use super::address::{PhysAddr, PhysPageNum};
 
@@ -13,7 +12,7 @@ type FrameAllocatorImpl = StackFrameAllocator;
 
 lazy_static! {
     pub static ref FRAME_ALLOCATOR: UPSafeCell<FrameAllocatorImpl> =
-        unsafe { UPSafeCell::new(FrameAllocatorImpl::new()) };
+        UPSafeCell::new(FrameAllocatorImpl::new());
 }
 
 pub fn init_frame_allocator() {

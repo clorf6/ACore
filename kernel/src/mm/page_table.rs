@@ -66,7 +66,7 @@ pub struct PageTable {
 
 impl PageTable {
     pub fn new() -> Self {
-        let mut frame = frame_alloc().unwrap();
+        let frame = frame_alloc().unwrap();
         let ppn = frame.ppn;
         PageTable {
             root_ppn: ppn,

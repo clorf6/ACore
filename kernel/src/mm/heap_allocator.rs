@@ -1,20 +1,20 @@
-use allocator::buddy_allocator::BuddyAllocator;
-use buddy_system_allocator::LockedHeap;
+use allocator::BuddyAllocator;
+//use buddy_system_allocator::LockedHeap;
 use crate::println;
 use crate::config::{KERNEL_HEAP_SIZE, PAGE_SIZE};
 
-const alloc_minimum: usize = PAGE_SIZE;
+const ALLOC_MINIMUM: usize = PAGE_SIZE;
 
 const fn get_alloc_num(total: usize, minimum: usize) -> usize {
     (total << 1) / minimum
 }
 
-const alloc_num: usize = get_alloc_num(KERNEL_HEAP_SIZE, alloc_minimum);
+const ALLOC_NUM: usize = get_alloc_num(KERNEL_HEAP_SIZE, ALLOC_MINIMUM);
 static mut KERNEL_HEAP_SPACE: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
 
 #[global_allocator]
 //static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
-static HEAP_ALLOCATOR: BuddyAllocator<alloc_num, alloc_minimum> = BuddyAllocator::new();
+static HEAP_ALLOCATOR: BuddyAllocator<ALLOC_NUM, ALLOC_MINIMUM> = BuddyAllocator::new();
 
 pub fn used() -> usize {
     HEAP_ALLOCATOR.used()

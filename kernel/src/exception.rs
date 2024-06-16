@@ -1,5 +1,7 @@
 use core::panic::PanicInfo;
+
 use log::*;
+
 use crate::console::shutdown;
 
 #[panic_handler]
@@ -14,5 +16,5 @@ fn panic(info: &PanicInfo) -> ! {
     } else {
         error!("[kernel] Panicked: {}", info.message().unwrap());
     }
-    unsafe { shutdown(false) }
+    shutdown(false)
 }

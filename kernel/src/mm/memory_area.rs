@@ -5,13 +5,15 @@ use core::arch::asm;
 
 use bitflags::*;
 use lazy_static::*;
+use log::{debug, info};
 use riscv::register::satp;
 use sync::UPSafeCell;
+
 use crate::config::*;
 use crate::println;
-use log::{debug, info};
+
+use super::buffer_position;
 use super::address::{PhysAddr, PhysPageNum, VirtAddr, VirtPageNum};
-use super::{buffer_position, heap_allocator};
 use super::frame_allocator::{frame_alloc, FrameTracker};
 use super::page_table::{PageTable, PageTableEntry, PTEFlags};
 use super::range::{Range, Step};
@@ -151,7 +153,7 @@ extern "C" {
 
 lazy_static! {
     pub static ref KERNEL_SPACE: Arc<UPSafeCell<MemorySet>> =
-        Arc::new(unsafe { UPSafeCell::new(MemorySet::new_kernel()) });
+        Arc::new(UPSafeCell::new(MemorySet::new_kernel()));
 }
 
 pub struct MemorySet {
