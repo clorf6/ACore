@@ -446,7 +446,7 @@ impl MemorySet {
 
 #[allow(unused)]
 pub fn remap_test() {
-    let mut kernel_space = KERNEL_SPACE.lock();
+    let mut kernel_space = KERNEL_SPACE.get();
     let mid_text: VirtAddr = ((stext as usize + etext as usize) / 2).into();
     let mid_rodata: VirtAddr = ((srodata as usize + erodata as usize) / 2).into();
     let mid_data: VirtAddr = ((sdata as usize + edata as usize) / 2).into();

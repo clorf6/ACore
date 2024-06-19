@@ -60,7 +60,7 @@ pub fn trap_handler() {
         }
         Trap::Interrupt(Interrupt::SupervisorSoft) => {
             unsafe { asm!{"csrc sip, 2"}; }
-            if get_server() == 0 {
+            if !get_server() {
                 suspend_and_yield();
             }
         }

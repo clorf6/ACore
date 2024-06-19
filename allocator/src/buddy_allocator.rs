@@ -16,15 +16,15 @@ impl<const NUM: usize, const MINIMUM: usize> BuddyAllocator<NUM, MINIMUM> {
     }
 
     pub fn lock(&self) -> RefMut<'_, BuddyAllocatorInner<NUM, MINIMUM>> {
-        self.allocator.lock()
+        self.allocator.get()
     }
 
     pub unsafe fn init(&self, offset: usize) {
-            self.allocator.lock().init(offset);
+            self.allocator.get().init(offset);
     }
 
     pub fn used(&self) -> usize {
-        self.allocator.lock().used
+        self.allocator.get().used
     }
 }
 
@@ -84,8 +84,8 @@ impl<const NUM: usize, const MINIMUM: usize> BuddyAllocatorInner<NUM, MINIMUM> {
             if idx >= self.block.len() || (idx as isize) < 0 {
                 panic!("[buddy allocator] Index out of bounds.");
             }
-            if self.block[(idx << 1) + 1] >= size {
-                idx = (idx << 1) + 1;
+            if self.block[idx << 1 | 1] >= size {
+                idx = idx << 1 | 1;
             } else {
                 idx = (idx << 1) + 2;
             }
@@ -102,7 +102,7 @@ impl<const NUM: usize, const MINIMUM: usize> BuddyAllocatorInner<NUM, MINIMUM> {
             if idx >= self.block.len() || (idx as isize) < 0 {
                 panic!("[buddy allocator] Index out of bounds.");
             }
-            self.block[idx] = max(self.block[(idx << 1) + 1], self.block[(idx << 1) + 2]);
+            self.block[idx] = max(self.block[idx << 1 | 1], self.block[(idx << 1) + 2]);
         }
         (self.offset + offset) as *mut u8
     }
@@ -135,7 +135,7 @@ impl<const NUM: usize, const MINIMUM: usize> BuddyAllocatorInner<NUM, MINIMUM> {
                 panic!("[buddy allocator] Index out of bounds.");
             }
             node_size <<= 1;
-            let left = self.block[(idx << 1) + 1];
+            let left = self.block[idx << 1 | 1];
             let right = self.block[(idx << 1) + 2];
             if left + right == node_size {
                 self.block[idx] = node_size;

@@ -1,9 +1,11 @@
-use super::Process;
-use super::Pid;
-use sync::UPSafeCell;
-use alloc::sync::Arc;
 use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
+
 use lazy_static::*;
+use sync::UPSafeCell;
+
+use super::Pid;
+use super::Process;
 
 pub struct ProcessManager {
     processes: BTreeMap<usize, Arc<Process>>,
@@ -36,19 +38,19 @@ lazy_static!{
 }
 
 pub fn insert_process(process: Arc<Process>) {
-    PROCESS_MANAGER.lock().insert(process);
+    PROCESS_MANAGER.get().insert(process);
 }
 
 pub fn remove_process(pid: usize){
-    PROCESS_MANAGER.lock().remove(pid);
+    PROCESS_MANAGER.get().remove(pid);
 }
 
 pub fn find_process(pid: usize) -> Option<Arc<Process>> {
-    PROCESS_MANAGER.lock().find(pid)
+    PROCESS_MANAGER.get().find(pid)
 }
 
 pub fn process_num() -> i32 {
-    PROCESS_MANAGER.lock().size()
+    PROCESS_MANAGER.get().size()
 }
 
 lazy_static! {

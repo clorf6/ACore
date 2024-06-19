@@ -23,7 +23,7 @@ lazy_static! {
 }
 
 pub fn init_uart() {
-    UART.lock().start();
+    UART.get().start();
 }
 
 impl UartPort {

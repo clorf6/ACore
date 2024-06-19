@@ -1,48 +1,64 @@
-use alloc::collections::VecDeque;
+use alloc::collections::{BinaryHeap, BTreeMap, VecDeque};
 use alloc::sync::Arc;
-use core::sync::atomic::AtomicUsize;
+use alloc::vec::Vec;
 
 use lazy_static::*;
 use sync::UPSafeCell;
-
+use crate::println;
 use crate::loader::get_app_data_by_name;
 
 use super::Task;
 
 pub struct TaskManager {
     ready_tasks: VecDeque<Arc<Task>>,
-    server: AtomicUsize,
+    tasks: BTreeMap<usize, Arc<Task>>,
+    server: UPSafeCell<VecDeque<isize>>,
 }
 
 impl TaskManager {
     pub fn new() -> Self {
         Self {
             ready_tasks: VecDeque::new(),
-            server: AtomicUsize::new(0),
+            tasks: BTreeMap::new(),
+            server: UPSafeCell::new(VecDeque::new()),
         }
     }
 
-    pub fn set_server(&mut self, server: AtomicUsize) {
-        self.server = server;
+    pub fn set_server(&mut self, server: Vec<isize>) {
+        *self.server.get() = VecDeque::from(server);
     }
 
-    pub fn server(&self) -> usize {
-        self.server.load(core::sync::atomic::Ordering::SeqCst)
+    pub fn insert_task(&mut self, task: Arc<Task>) {
+        self.tasks.insert(task.pid, task);
     }
 
-    pub fn push_back(&mut self, task: Arc<Task>) {
+    pub fn remove_task(&mut self, pid: usize) {
+        self.tasks.remove(&pid);
+    }
+
+    pub fn find_task(&self, pid: usize) -> Option<Arc<Task>> {
+        self.tasks.get(&pid).cloned()
+    }
+
+    pub fn server(&self) -> bool {
+        !self.server.get().is_empty()
+    }
+
+    pub fn push(&mut self, task: Arc<Task>) {
         self.ready_tasks.push_back(task);
     }
 
-    pub fn push_front(&mut self, task: Arc<Task>) {
-        self.ready_tasks.push_front(task);
-    }
-
     pub fn get_front(&mut self) -> Option<Arc<Task>> {
-        match self.server() {
-            0 => self.ready_tasks.pop_front(),
-            1 => Option::from(MANAGERTASK.clone()),
-            _ => None,
+        if !self.server() {
+            self.ready_tasks.pop_front()
+        } else {
+            let pid = self.server.get().pop_front().unwrap();
+            match pid {
+                -1 => self.ready_tasks.pop_front(),
+                0 => Option::from(INITTASK.clone()),
+                1 => Option::from(MANAGERTASK.clone()),
+                _ => self.find_task(pid as usize)
+            }
         }
     }
 
@@ -55,34 +71,38 @@ lazy_static! {
     pub static ref TASK_MANAGER: UPSafeCell<TaskManager> = UPSafeCell::new(TaskManager::new());
 }
 
-pub fn set_server(server: usize) {
-    TASK_MANAGER.lock().set_server(AtomicUsize::new(server));
+pub fn set_server(server: Vec<isize>) {
+    TASK_MANAGER.get().set_server(server);
 }
 
-pub fn get_server() -> usize {
-    TASK_MANAGER.lock().server()
+pub fn get_server() -> bool {
+    TASK_MANAGER.get().server()
 }
 
-pub fn push_back(task: Arc<Task>) {
-    if get_server() == 0 {
-        TASK_MANAGER.lock().push_back(task);
-    } else {
-        if task.pid == 1 {
-            set_server(0);
-        }
+pub fn insert_task(task: Arc<Task>) {
+    TASK_MANAGER.get().insert_task(task);
+}
+
+pub fn remove_task(pid: usize) {
+    TASK_MANAGER.get().remove_task(pid);
+}
+
+pub fn find_task(pid: usize) -> Option<Arc<Task>> {
+    TASK_MANAGER.get().find_task(pid)
+}
+
+pub fn push(task: Arc<Task>) {
+    if !get_server() {
+        TASK_MANAGER.get().push(task);
     }
 }
 
-pub fn push_front(task: Arc<Task>) {
-    TASK_MANAGER.lock().push_front(task);
-}
-
 pub fn get_front_task() -> Option<Arc<Task>> {
-    TASK_MANAGER.lock().get_front()
+    TASK_MANAGER.get().get_front()
 }
 
 pub fn task_num() -> i32 {
-    TASK_MANAGER.lock().size()
+    TASK_MANAGER.get().size()
 }
 
 lazy_static! {
@@ -91,5 +111,5 @@ lazy_static! {
 }
 
 pub fn init_tasks() {
-    push_back(INITTASK.clone());
+    push(INITTASK.clone());
 }

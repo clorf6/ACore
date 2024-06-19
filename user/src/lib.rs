@@ -14,7 +14,7 @@ pub use process::*;
 //use buddy_system_allocator::LockedHeap;
 
 extern crate alloc;
-const USER_HEAP_SIZE: usize = 16384;
+const USER_HEAP_SIZE: usize = 65536;
 const ALLOC_MINIMUM: usize = 256;
 
 const fn get_alloc_num(total: usize, minimum: usize) -> usize {
@@ -81,7 +81,6 @@ pub fn wait(exit_code: &mut i32) -> isize {
         }
     }
 }
-
 pub fn waitpid(pid: usize, exit_code: &mut i32) -> isize {
     loop {
         match sys_waitpid(pid as isize, exit_code as *mut _) {

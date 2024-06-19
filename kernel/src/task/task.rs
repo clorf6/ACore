@@ -73,7 +73,7 @@ impl Drop for TaskInner {
 
 impl Task {
     pub fn lock(&self) -> RefMut<'_, TaskInner> {
-        self.inner.lock()
+        self.inner.get()
     }
 
     pub fn new(elf_data: &[u8], pid: usize) -> Self {
@@ -88,7 +88,7 @@ impl Task {
         *trap_ctx = TrapContext::app_init_context(
             user_sepc,
             user_sp,
-            KERNEL_SPACE.lock().token(),
+            KERNEL_SPACE.get().token(),
             kernel_stack_top,
             trap_handler as usize,
         );
@@ -106,7 +106,7 @@ impl Task {
     }
 
     pub fn fork(self: &Arc<Self>, pid: usize) -> Arc<Self> {
-        let parent_inner = self.inner.lock();
+        let parent_inner = self.inner.get();
         let mut memory_set = MemorySet::from_user(&parent_inner.memory);
         drop(parent_inner);
         let trap_ctx_ppn = memory_set
@@ -145,9 +145,10 @@ impl Task {
         *trap_ctx = TrapContext::app_init_context(
             user_sepc,
             user_sp,
-            KERNEL_SPACE.lock().token(),
+            KERNEL_SPACE.get().token(),
             self.kernel_stack.top(),
             trap_handler as usize,
         );
     }
 }
+

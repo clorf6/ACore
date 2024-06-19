@@ -18,7 +18,7 @@ pub struct ProcessInner {
 
 impl Process {
     pub fn lock(&self) -> RefMut<'_, ProcessInner> {
-        self.inner.lock()
+        self.inner.get()
     }
     pub fn new(pid: Pid) -> Self {
         Self {

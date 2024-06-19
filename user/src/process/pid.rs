@@ -43,9 +43,9 @@ lazy_static! {
 }
 
 pub fn alloc_pid() -> Pid {
-    PID_ALLOCATOR.lock().alloc()
+    PID_ALLOCATOR.get().alloc()
 }
 
 pub fn dealloc_pid(pid: &Pid) {
-    PID_ALLOCATOR.lock().dealloc(pid);
+    PID_ALLOCATOR.get().dealloc(pid);
 }

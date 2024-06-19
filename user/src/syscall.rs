@@ -9,6 +9,7 @@ pub const SYSCALL_GETPID: usize = 172;
 pub const SYSCALL_FORK: usize = 220;
 pub const SYSCALL_EXEC: usize = 221;
 pub const SYSCALL_WAITPID: usize = 260;
+pub const SYSCALL_SET_PRIORITY: usize = 140;
 
 fn syscall(id: usize, args: [usize; 3]) -> isize {
     let mut ret: isize;

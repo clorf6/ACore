@@ -7,7 +7,7 @@ mod processor;
 pub use stack::{KernelStack};
 pub use switch::__switch;
 pub use task::{Task, TaskStatus, TaskContext};
-pub use manager::{push_back, push_front, get_front_task, init_tasks, task_num, get_server, set_server};
+pub use manager::*;
 pub use processor::{get_cur_task, user_token, trap_ctx, schedule, run_tasks};
 
 pub fn suspend_and_yield() {

@@ -19,7 +19,7 @@ pub fn init_frame_allocator() {
     extern "C" {
         fn ekernel();
     }
-    FRAME_ALLOCATOR.lock().init(
+    FRAME_ALLOCATOR.get().init(
         PhysAddr::from(ekernel as usize).ceil(),
         PhysAddr::from(FRAME_END).floor(),
     );
@@ -71,11 +71,11 @@ impl FrameAllocator for StackFrameAllocator {
 }
 
 pub fn frame_alloc() -> Option<FrameTracker> {
-    FRAME_ALLOCATOR.lock().alloc().map(FrameTracker::new)
+    FRAME_ALLOCATOR.get().alloc().map(FrameTracker::new)
 }
 
 fn frame_dealloc(ppn: PhysPageNum) {
-    FRAME_ALLOCATOR.lock().dealloc(ppn);
+    FRAME_ALLOCATOR.get().dealloc(ppn);
 }
 pub struct FrameTracker {
     pub ppn: PhysPageNum,

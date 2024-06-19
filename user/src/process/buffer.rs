@@ -27,6 +27,6 @@ pub fn read_from_buffer<const N: usize>() -> [usize; N] {
 pub fn buffer_test() {
     let data: [usize; 4] = read_from_buffer();
     for byte in data.iter() {
-        println!("[User] Read from buffer: {}", byte);
+        println!("[user] Read from buffer: {}", byte);
     }
 }

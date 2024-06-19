@@ -3,15 +3,15 @@ use core::sync::atomic::{AtomicPtr, Ordering};
 use crate::drivers::sbi::UART;
 
 pub fn putchar(c: u8) {
-    UART.lock().write_char(c);
+    UART.get().write_char(c);
 }
 
 pub fn print(args: fmt::Arguments) {
-    UART.lock().write_fmt(args).unwrap();
+    UART.get().write_fmt(args).unwrap();
 }
 
 pub fn getchar() -> u8 {
-    UART.lock().read_char()
+    UART.get().read_char()
 }
 
 #[macro_export]
