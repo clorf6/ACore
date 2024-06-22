@@ -91,12 +91,12 @@ impl<const NUM: usize, const MINIMUM: usize> BuddyAllocatorInner<NUM, MINIMUM> {
             }
             node_size >>= 1;
         }
+        let offset = (idx + 1) * node_size - self.total;
         if self.block[idx] < size {
-            panic!("[buddy allocator] Size not enough. {}, {}, {}, {}", self.block[idx], size, self.used, self.total);
+            panic!("[buddy allocator] Size not enough. {:x}, {}, {}, {}", self.offset + offset, size, self.used, self.total);
         };
         self.used += self.block[idx];
         self.block[idx] = 0;
-        let offset = (idx + 1) * node_size - self.total;
         while idx != 0 {
             idx = ((idx + 1) >> 1) - 1;
             if idx >= self.block.len() || (idx as isize) < 0 {

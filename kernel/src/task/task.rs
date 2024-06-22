@@ -5,6 +5,7 @@ use sync::UPSafeCell;
 
 use crate::config::TRAP_CONTEXT;
 use crate::mm::{KERNEL_SPACE, MemorySet, PhysPageNum, VirtAddr};
+use crate::task::scheduler::MAX_STRIDE;
 use crate::trap::{trap_handler, trap_return, TrapContext};
 use super::ScheduleUnit;
 use super::KernelStack;
@@ -52,8 +53,8 @@ pub struct TaskInner {
     pub task_ctx: TaskContext,
     pub task_status: TaskStatus,
     pub memory: MemorySet,
-    pub priority: isize,
-    pub stride: isize,
+    pub priority: usize,
+    pub pass: usize,
 }
 
 impl TaskInner {
@@ -78,13 +79,13 @@ impl Task {
         self.inner.get()
     }
 
-    pub fn toUnit(self: &Arc<Self>) -> ScheduleUnit {
+    pub fn to_unit(self: &Arc<Self>) -> ScheduleUnit {
         let inner = self.lock();
-        let stride = inner.stride;
+        let pass = inner.pass;
         drop(inner);
         ScheduleUnit {
             task: self.clone(),
-            stride,
+            pass,
         }
     }
 
@@ -114,7 +115,7 @@ impl Task {
                     task_status: TaskStatus::Ready,
                     memory: memory_set,
                     priority: 16,
-                    stride: 0,
+                    pass: 0,
                 }),
         }
     }
@@ -132,6 +133,7 @@ impl Task {
         let trap_ctx: &mut TrapContext = trap_ctx_ppn.get_mut();
         trap_ctx.kernel_sp = kernel_stack_top;
         memory_set.map_buffer(pid);
+        let stride = *MAX_STRIDE.get();
         Arc::new( Self {
             pid,
             kernel_stack,
@@ -141,7 +143,7 @@ impl Task {
                     task_status: TaskStatus::Ready,
                     memory: memory_set,
                     priority: 16,
-                    stride: 0,
+                    pass: stride,
                 }),
         })
     }

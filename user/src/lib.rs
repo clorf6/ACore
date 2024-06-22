@@ -47,6 +47,10 @@ fn main() -> i32 {
     panic!("Cannot find main!");
 }
 
+pub fn used() -> usize {
+    HEAP.used()
+}
+
 pub fn read(fd: usize, buf: &mut [u8]) -> isize {
     sys_read(fd, buf)
 }
@@ -98,6 +102,6 @@ pub fn sleep(period_ms: usize) {
     }
 }
 
-pub fn set_priority(priority: isize) -> isize {
+pub fn set_priority(priority: usize) -> isize {
     sys_set_priority(priority)
 }

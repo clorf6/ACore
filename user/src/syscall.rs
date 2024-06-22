@@ -62,6 +62,6 @@ pub fn sys_waitpid(pid: isize, exit_code: *mut i32) -> isize {
     syscall(SYSCALL_WAITPID, [pid as usize, exit_code as usize, 0])
 }
 
-pub fn sys_set_priority(priority: isize) -> isize {
-    syscall(SYSCALL_SET_PRIORITY, [priority as usize, 0, 0])
+pub fn sys_set_priority(priority: usize) -> isize {
+    syscall(SYSCALL_SET_PRIORITY, [priority, 0, 0])
 }

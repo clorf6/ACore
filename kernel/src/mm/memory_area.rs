@@ -173,7 +173,7 @@ impl MemorySet {
     }
     pub fn clean(&mut self) {
         self.areas.clear();
-        self.page_table.clear();
+        //self.page_table.clear();
     }
     fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
         map_area.map(&mut self.page_table);

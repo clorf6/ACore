@@ -5,6 +5,7 @@ use crate::syscall::{SYSCALL_FORK, SYSCALL_WAITPID};
 use crate::task::*;
 use crate::time::get_time;
 use alloc::vec;
+use crate::config::BIGSTRIDE;
 use crate::println;
 
 pub fn sys_exit(exit_code: isize) -> ! {
@@ -32,7 +33,7 @@ pub fn sys_fork() -> isize {
     let new_task = get_cur_task().fork(new_pid);
     let trap_ctx = new_task.lock().trap_ctx();
     trap_ctx.x[10] = 0;
-    push(new_task.toUnit());
+    push(new_task.to_unit());
     insert_task(new_task);
     new_pid as isize
 }
@@ -74,10 +75,10 @@ pub fn sys_get_time() -> isize {
     (get_time() / 10000) as isize
 }
 
-pub fn sys_set_priority(priority: isize) -> isize {
-    if priority <= 1 {
+pub fn sys_set_priority(priority: usize) -> isize {
+    if priority <= 1 || priority > BIGSTRIDE / 180 {
         return -1;
     }
     get_cur_task().lock().priority = priority;
-    priority
+    priority as isize
 }

@@ -47,6 +47,10 @@ impl TaskManager {
         self.ready_tasks.push(schedule_unit);
     }
 
+    pub fn get_stride(&self) -> usize {
+        self.ready_tasks.peek().map(|unit| unit.pass).unwrap_or(0)
+    }
+
     pub fn get_front(&mut self) -> Option<Arc<Task>> {
         if !self.server() {
             self.ready_tasks.pop().map(|unit| unit.task)
@@ -90,6 +94,10 @@ pub fn find_task(pid: usize) -> Option<Arc<Task>> {
     TASK_MANAGER.get().find_task(pid)
 }
 
+pub fn get_stride() -> usize {
+    TASK_MANAGER.get().get_stride()
+}
+
 pub fn push(task: ScheduleUnit) {
     if !get_server() {
         TASK_MANAGER.get().push(task);
@@ -110,5 +118,5 @@ lazy_static! {
 }
 
 pub fn init_tasks() {
-    push(INITTASK.toUnit());
+    push(INITTASK.to_unit());
 }

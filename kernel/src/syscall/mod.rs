@@ -26,7 +26,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
         SYSCALL_EXEC => sys_exec(args[0] as *const u8),
         SYSCALL_WAITPID => sys_waitpid(args[0] as isize, args[1] as *mut i32),
         SYSCALL_GET_TIME => sys_get_time(),
-        SYSCALL_SET_PRIORITY => sys_set_priority(args[0] as isize),
+        SYSCALL_SET_PRIORITY => sys_set_priority(args[0]),
         _ => panic!("Unsupported syscall_id: {}", syscall_id),
     }
 }

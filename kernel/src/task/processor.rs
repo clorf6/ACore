@@ -1,4 +1,5 @@
 use alloc::sync::Arc;
+use core::cmp::max;
 
 use lazy_static::lazy_static;
 use sync::UPSafeCell;
@@ -8,8 +9,10 @@ use crate::console::shutdown;
 use crate::mm::buffer::write_to_buffer;
 use crate::println;
 use crate::syscall::SYSCALL_EXIT;
+use crate::task::{get_server, task_num};
+use crate::task::scheduler::MAX_STRIDE;
 use crate::trap::TrapContext;
-use crate::task::{task_num, get_server};
+
 use super::{__switch, get_front_task, push, remove_task, Task, TaskContext, TaskStatus};
 
 pub struct Processor {
@@ -67,9 +70,14 @@ pub fn run_tasks() {
             let mut inner = task.inner.get();
             inner.task_status = TaskStatus::Running;
             let task_ctx_ptr = &inner.task_ctx as *const TaskContext;
-            inner.stride += BIGSTRIDE / inner.priority;
+            if !get_server() {
+                inner.pass += BIGSTRIDE / inner.priority;
+                let mut max_stride = MAX_STRIDE.get();
+                *max_stride = max(*max_stride, inner.pass);
+                drop(max_stride);
+                //println!("run task {} {} server {} num {}", task.pid, inner.pass, get_server(), task_num());
+            }
             drop(inner);
-            //println!("run task {} server {} num {}", task.pid, get_server(), task_num());
             let mut processor = PROCESSOR.get();
             let idle_task_ctx_ptr = processor.idle_task_ctx_ptr();
             processor.cur = Some(task);
@@ -90,7 +98,7 @@ pub fn schedule(add: bool, exit_code: isize) {
         inner.task_status = TaskStatus::Ready;
         let task_ctx_ptr = &mut inner.task_ctx as *mut TaskContext;
         drop(inner);
-        push(task.toUnit());
+        push(task.to_unit());
         let mut processor = PROCESSOR.get();
         let idle_task_ctx_ptr = processor.idle_task_ctx_ptr();
         drop(processor);
@@ -110,7 +118,7 @@ pub fn schedule(add: bool, exit_code: isize) {
             }
         }
         remove_task(pid);
-        assert!(Arc::strong_count(&task) == 1);
+        assert_eq!(Arc::strong_count(&task), 1);
         write_to_buffer(&[SYSCALL_EXIT, pid, exit_code as usize], 1);
         drop(inner);
         drop(task);
