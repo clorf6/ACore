@@ -5,6 +5,7 @@ use crate::syscall::{SYSCALL_FORK, SYSCALL_WAITPID};
 use crate::task::*;
 use crate::time::get_time;
 use alloc::vec;
+use crate::println;
 
 pub fn sys_exit(exit_code: isize) -> ! {
     set_server(vec![1, -1]);
@@ -25,14 +26,13 @@ pub fn sys_fork() -> isize {
     let task = get_cur_task();
     let pid = task.pid;
     write_to_buffer(&[SYSCALL_FORK, pid], 1);
-    //println!("fork");
     set_server(vec![1, pid as isize]);
     suspend_and_yield();
     let [new_pid] = read_from_buffer(1); // child pid
     let new_task = get_cur_task().fork(new_pid);
     let trap_ctx = new_task.lock().trap_ctx();
     trap_ctx.x[10] = 0;
-    push(new_task.clone());
+    push(new_task.toUnit());
     insert_task(new_task);
     new_pid as isize
 }
@@ -72,4 +72,12 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 
 pub fn sys_get_time() -> isize {
     (get_time() / 10000) as isize
+}
+
+pub fn sys_set_priority(priority: isize) -> isize {
+    if priority <= 1 {
+        return -1;
+    }
+    get_cur_task().lock().priority = priority;
+    priority
 }

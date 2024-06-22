@@ -23,4 +23,4 @@ pub const MTIME_ADDR: usize = 0x0200bff8;
 pub const MTIMECMP_ADDR: usize = 0x02004000;
 pub const CPU_NUMBER: usize = 8;
 
-pub const BIGSTRIDE: isize = 10000;
+pub const BIGSTRIDE: isize = 49152;

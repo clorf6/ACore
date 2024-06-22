@@ -67,7 +67,9 @@ pub fn run_tasks() {
             let mut inner = task.inner.get();
             inner.task_status = TaskStatus::Running;
             let task_ctx_ptr = &inner.task_ctx as *const TaskContext;
+            inner.stride += BIGSTRIDE / inner.priority;
             drop(inner);
+            //println!("run task {} server {} num {}", task.pid, get_server(), task_num());
             let mut processor = PROCESSOR.get();
             let idle_task_ctx_ptr = processor.idle_task_ctx_ptr();
             processor.cur = Some(task);
@@ -84,12 +86,11 @@ pub fn run_tasks() {
 pub fn schedule(add: bool, exit_code: isize) {
     let task = take_cur_task();
     let mut inner = task.inner.get();
-    //println!("schedule task {} server {} num {}", task.pid, get_server(), task_num());
     if add { 
         inner.task_status = TaskStatus::Ready;
         let task_ctx_ptr = &mut inner.task_ctx as *mut TaskContext;
         drop(inner);
-        push(task);
+        push(task.toUnit());
         let mut processor = PROCESSOR.get();
         let idle_task_ctx_ptr = processor.idle_task_ctx_ptr();
         drop(processor);

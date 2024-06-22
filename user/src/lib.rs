@@ -14,7 +14,7 @@ pub use process::*;
 //use buddy_system_allocator::LockedHeap;
 
 extern crate alloc;
-const USER_HEAP_SIZE: usize = 65536;
+const USER_HEAP_SIZE: usize = 16384;
 const ALLOC_MINIMUM: usize = 256;
 
 const fn get_alloc_num(total: usize, minimum: usize) -> usize {
@@ -96,4 +96,8 @@ pub fn sleep(period_ms: usize) {
     while sys_get_time() < start + period_ms as isize {
         sys_yield();
     }
+}
+
+pub fn set_priority(priority: isize) -> isize {
+    sys_set_priority(priority)
 }

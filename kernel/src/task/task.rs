@@ -6,7 +6,7 @@ use sync::UPSafeCell;
 use crate::config::TRAP_CONTEXT;
 use crate::mm::{KERNEL_SPACE, MemorySet, PhysPageNum, VirtAddr};
 use crate::trap::{trap_handler, trap_return, TrapContext};
-
+use super::ScheduleUnit;
 use super::KernelStack;
 
 #[derive(Eq, PartialEq)]
@@ -52,6 +52,8 @@ pub struct TaskInner {
     pub task_ctx: TaskContext,
     pub task_status: TaskStatus,
     pub memory: MemorySet,
+    pub priority: isize,
+    pub stride: isize,
 }
 
 impl TaskInner {
@@ -74,6 +76,16 @@ impl Drop for TaskInner {
 impl Task {
     pub fn lock(&self) -> RefMut<'_, TaskInner> {
         self.inner.get()
+    }
+
+    pub fn toUnit(self: &Arc<Self>) -> ScheduleUnit {
+        let inner = self.lock();
+        let stride = inner.stride;
+        drop(inner);
+        ScheduleUnit {
+            task: self.clone(),
+            stride,
+        }
     }
 
     pub fn new(elf_data: &[u8], pid: usize) -> Self {
@@ -101,6 +113,8 @@ impl Task {
                     task_ctx: TaskContext::new(trap_return as usize, kernel_stack_top),
                     task_status: TaskStatus::Ready,
                     memory: memory_set,
+                    priority: 16,
+                    stride: 0,
                 }),
         }
     }
@@ -126,6 +140,8 @@ impl Task {
                     task_ctx: TaskContext::new(trap_return as usize, kernel_stack_top),
                     task_status: TaskStatus::Ready,
                     memory: memory_set,
+                    priority: 16,
+                    stride: 0,
                 }),
         })
     }
@@ -151,4 +167,3 @@ impl Task {
         );
     }
 }
-

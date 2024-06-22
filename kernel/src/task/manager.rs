@@ -4,13 +4,12 @@ use alloc::vec::Vec;
 
 use lazy_static::*;
 use sync::UPSafeCell;
-use crate::println;
 use crate::loader::get_app_data_by_name;
-
+use crate::task::scheduler::ScheduleUnit;
 use super::Task;
 
 pub struct TaskManager {
-    ready_tasks: VecDeque<Arc<Task>>,
+    ready_tasks: BinaryHeap<ScheduleUnit>,
     tasks: BTreeMap<usize, Arc<Task>>,
     server: UPSafeCell<VecDeque<isize>>,
 }
@@ -18,7 +17,7 @@ pub struct TaskManager {
 impl TaskManager {
     pub fn new() -> Self {
         Self {
-            ready_tasks: VecDeque::new(),
+            ready_tasks: BinaryHeap::new(),
             tasks: BTreeMap::new(),
             server: UPSafeCell::new(VecDeque::new()),
         }
@@ -44,17 +43,17 @@ impl TaskManager {
         !self.server.get().is_empty()
     }
 
-    pub fn push(&mut self, task: Arc<Task>) {
-        self.ready_tasks.push_back(task);
+    pub fn push(&mut self, schedule_unit: ScheduleUnit) {
+        self.ready_tasks.push(schedule_unit);
     }
 
     pub fn get_front(&mut self) -> Option<Arc<Task>> {
         if !self.server() {
-            self.ready_tasks.pop_front()
+            self.ready_tasks.pop().map(|unit| unit.task)
         } else {
             let pid = self.server.get().pop_front().unwrap();
             match pid {
-                -1 => self.ready_tasks.pop_front(),
+                -1 => self.ready_tasks.pop().map(|unit| unit.task),
                 0 => Option::from(INITTASK.clone()),
                 1 => Option::from(MANAGERTASK.clone()),
                 _ => self.find_task(pid as usize)
@@ -91,7 +90,7 @@ pub fn find_task(pid: usize) -> Option<Arc<Task>> {
     TASK_MANAGER.get().find_task(pid)
 }
 
-pub fn push(task: Arc<Task>) {
+pub fn push(task: ScheduleUnit) {
     if !get_server() {
         TASK_MANAGER.get().push(task);
     }
@@ -111,5 +110,5 @@ lazy_static! {
 }
 
 pub fn init_tasks() {
-    push(INITTASK.clone());
+    push(INITTASK.toUnit());
 }

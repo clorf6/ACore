@@ -6,7 +6,7 @@ extern crate user;
 
 use alloc::sync::Arc;
 
-use user::{alloc_pid, find_process, INITPROC, insert_process, Process, remove_process, SYSCALL_EXIT, SYSCALL_FORK, SYSCALL_WAITPID, write_to_buffer, yield_};
+use user::{println, alloc_pid, find_process, INITPROC, insert_process, Process, remove_process, SYSCALL_EXIT, SYSCALL_FORK, SYSCALL_WAITPID, write_to_buffer, yield_};
 
 #[no_mangle]
 pub fn main() -> i32 {

@@ -11,7 +11,7 @@ pub use context::TrapContext;
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::println;
 use crate::syscall::{sys_exit, syscall};
-use crate::task::{get_server, suspend_and_yield, trap_ctx, user_token};
+use crate::task::{get_cur_task, get_server, suspend_and_yield, trap_ctx, user_token};
 
 mod context;
 
