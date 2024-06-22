@@ -35,6 +35,6 @@ A simple RISC-V microkernel, which can be seen as a imcomplete transformation of
 
 ##### Futuer plan if time permitted
 
-- [ ] Scheduler with stride and priority
+- [x] Stride scheduler
 - [ ] File System
 - [ ] SLAB allocator
